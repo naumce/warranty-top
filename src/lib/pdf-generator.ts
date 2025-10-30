@@ -1,0 +1,191 @@
+import jsPDF from "jspdf";
+import { format } from "date-fns";
+
+interface WarrantyData {
+  id: string;
+  product_name: string;
+  brand?: string;
+  model?: string;
+  serial_number?: string;
+  purchase_date: string;
+  warranty_end_date: string;
+  store_name?: string;
+  store_address?: string;
+  store_city?: string;
+  store_phone?: string;
+  receipt_number?: string;
+  purchase_price?: number;
+  notes?: string;
+  category?: string;
+}
+
+export const generateWarrantyPDF = (warranty: WarrantyData): void => {
+  const pdf = new jsPDF();
+  
+  // Set up colors
+  const primaryColor: [number, number, number] = [59, 130, 246]; // Blue
+  const darkColor: [number, number, number] = [31, 41, 55]; // Dark gray
+  const lightColor: [number, number, number] = [156, 163, 175]; // Light gray
+  
+  // Header
+  pdf.setFillColor(...primaryColor);
+  pdf.rect(0, 0, 210, 40, "F");
+  
+  pdf.setTextColor(255, 255, 255);
+  pdf.setFontSize(24);
+  pdf.setFont("helvetica", "bold");
+  pdf.text("WARRANTY DOCUMENT", 105, 20, { align: "center" });
+  
+  pdf.setFontSize(12);
+  pdf.setFont("helvetica", "normal");
+  pdf.text(`Generated: ${format(new Date(), "MMM dd, yyyy")}`, 105, 30, { align: "center" });
+  
+  // Product Information Section
+  let yPos = 55;
+  
+  pdf.setTextColor(...darkColor);
+  pdf.setFontSize(16);
+  pdf.setFont("helvetica", "bold");
+  pdf.text("Product Information", 20, yPos);
+  
+  yPos += 10;
+  pdf.setDrawColor(...lightColor);
+  pdf.line(20, yPos, 190, yPos);
+  
+  yPos += 10;
+  pdf.setFontSize(11);
+  pdf.setFont("helvetica", "normal");
+  
+  // Product details
+  const addField = (label: string, value: string | number | undefined | null) => {
+    if (value) {
+      pdf.setFont("helvetica", "bold");
+      pdf.text(`${label}:`, 20, yPos);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(String(value), 70, yPos);
+      yPos += 7;
+    }
+  };
+  
+  addField("Product Name", warranty.product_name);
+  addField("Brand", warranty.brand);
+  addField("Model", warranty.model);
+  addField("Serial Number", warranty.serial_number);
+  addField("Category", warranty.category);
+  
+  // Warranty Period Section
+  yPos += 5;
+  pdf.setFontSize(16);
+  pdf.setFont("helvetica", "bold");
+  pdf.text("Warranty Period", 20, yPos);
+  
+  yPos += 10;
+  pdf.line(20, yPos, 190, yPos);
+  
+  yPos += 10;
+  pdf.setFontSize(11);
+  pdf.setFont("helvetica", "normal");
+  
+  addField("Purchase Date", format(new Date(warranty.purchase_date), "MMM dd, yyyy"));
+  addField("Warranty Expires", format(new Date(warranty.warranty_end_date), "MMM dd, yyyy"));
+  
+  // Calculate warranty status
+  const today = new Date();
+  const endDate = new Date(warranty.warranty_end_date);
+  const daysLeft = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  
+  let status = "";
+  let statusColor: [number, number, number] = [0, 0, 0];
+  
+  if (daysLeft < 0) {
+    status = `EXPIRED (${Math.abs(daysLeft)} days ago)`;
+    statusColor = [220, 38, 38]; // Red
+  } else if (daysLeft === 0) {
+    status = "EXPIRES TODAY";
+    statusColor = [234, 88, 12]; // Orange
+  } else if (daysLeft <= 7) {
+    status = `URGENT (${daysLeft} days left)`;
+    statusColor = [234, 88, 12]; // Orange
+  } else {
+    status = `ACTIVE (${daysLeft} days left)`;
+    statusColor = [34, 197, 94]; // Green
+  }
+  
+  pdf.setFont("helvetica", "bold");
+  pdf.text("Status:", 20, yPos);
+  pdf.setTextColor(...statusColor);
+  pdf.text(status, 70, yPos);
+  pdf.setTextColor(...darkColor);
+  yPos += 10;
+  
+  // Purchase Information Section
+  yPos += 5;
+  pdf.setFontSize(16);
+  pdf.setFont("helvetica", "bold");
+  pdf.text("Purchase Information", 20, yPos);
+  
+  yPos += 10;
+  pdf.line(20, yPos, 190, yPos);
+  
+  yPos += 10;
+  pdf.setFontSize(11);
+  pdf.setFont("helvetica", "normal");
+  
+  addField("Store Name", warranty.store_name);
+  addField("Store Address", warranty.store_address);
+  addField("Store City", warranty.store_city);
+  addField("Store Phone", warranty.store_phone);
+  addField("Receipt Number", warranty.receipt_number);
+  
+  if (warranty.purchase_price) {
+    addField("Purchase Price", `$${warranty.purchase_price.toFixed(2)}`);
+  }
+  
+  // Notes Section
+  if (warranty.notes && yPos < 250) {
+    yPos += 5;
+    pdf.setFontSize(16);
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Notes", 20, yPos);
+    
+    yPos += 10;
+    pdf.line(20, yPos, 190, yPos);
+    
+    yPos += 10;
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "normal");
+    
+    // Split notes into lines that fit
+    const lines = pdf.splitTextToSize(warranty.notes, 170);
+    for (const line of lines) {
+      if (yPos > 270) break; // Don't overflow page
+      pdf.text(line, 20, yPos);
+      yPos += 5;
+    }
+  }
+  
+  // Footer
+  const footerY = 280;
+  pdf.setDrawColor(...lightColor);
+  pdf.line(20, footerY, 190, footerY);
+  
+  pdf.setFontSize(9);
+  pdf.setTextColor(...lightColor);
+  pdf.setFont("helvetica", "italic");
+  pdf.text("This document was generated by Warranty Tracker App", 105, footerY + 7, { align: "center" });
+  pdf.text("Keep this document safe for warranty claims and returns", 105, footerY + 12, { align: "center" });
+  pdf.text(`Document ID: ${warranty.id}`, 105, footerY + 17, { align: "center" });
+  
+  // Generate filename
+  const fileName = `Warranty_${warranty.product_name.replace(/[^a-zA-Z0-9]/g, "_")}_${format(new Date(), "yyyyMMdd")}.pdf`;
+  
+  // Download the PDF
+  pdf.save(fileName);
+};
+
+export const generateWarrantyQRCode = async (warrantyId: string): Promise<string> => {
+  // This would generate a QR code with warranty lookup URL
+  // For now, return a placeholder URL
+  return `https://warranty-tracker.app/warranty/${warrantyId}`;
+};
+
