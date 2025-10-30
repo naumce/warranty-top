@@ -85,6 +85,37 @@ export const AddWarrantyDialog = () => {
 
   const handleBarcodeScanned = async (code: string, barcodeFormat?: string) => {
     setScannedBarcode(code);
+    
+    // 🔍 CHECK IF WARRANTY WITH THIS BARCODE ALREADY EXISTS
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: existingWarranty } = await supabase
+        .from('warranties')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('serial_number', code)
+        .single();
+      
+      if (existingWarranty) {
+        toast.warning("Warranty with this barcode already exists!", {
+          description: `${existingWarranty.product_name || 'Product'} - Click to view`,
+          duration: 6000,
+          action: {
+            label: "View",
+            onClick: () => {
+              setOpen(false);
+              // Scroll to warranty card (if visible on dashboard)
+              setTimeout(() => {
+                const card = document.getElementById(`warranty-${existingWarranty.id}`);
+                card?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }, 300);
+            }
+          }
+        });
+        return; // Stop here, don't proceed with adding
+      }
+    }
+    
     setFormData({ ...formData, serial_number: code });
     setView('manual');
     

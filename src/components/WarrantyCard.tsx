@@ -99,7 +99,10 @@ export const WarrantyCard = ({ warranty }: WarrantyCardProps) => {
   };
 
   return (
-    <Card className={`border-${color}/20 hover:shadow-lg transition-all duration-200 ${isUrgent ? 'ring-2 ring-warning/50 shadow-warning/20' : ''}`}>
+    <Card 
+      id={`warranty-${warranty.id}`}
+      className={`border-${color}/20 hover:shadow-lg transition-all duration-200 ${isUrgent ? 'ring-2 ring-warning/50 shadow-warning/20' : ''}`}
+    >
       <CardHeader className="pb-3">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4">
           <div className="flex-1 min-w-0">

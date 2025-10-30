@@ -37,28 +37,28 @@ export const ScanReceiptView = ({ onImageCapture, onReceiptCapture, onBarcodeSca
           await html5QrCode.start(
             { facingMode: "environment" },
             {
-              fps: 10,
-              qrbox: { width: 300, height: 200 }, // Wider box for long barcodes
-              aspectRatio: 1.5, // Better for linear barcodes
+              fps: 20, // Increased FPS for better detection
+              qrbox: { width: 350, height: 150 }, // Optimized for linear barcodes
+              aspectRatio: 2.33, // Better for standard barcodes
               disableFlip: false,
-              // Support all barcode formats
+              // Focus on common product barcode formats
               formatsToSupport: [
-                0,  // QR_CODE
+                9,  // EAN_13 (Most common - Europe)
+                10, // EAN_8
+                14, // UPC_A (Most common - USA)
+                15, // UPC_E
+                5,  // CODE_128 (Common for retail)
+                3,  // CODE_39
+                0,  // QR_CODE (for product QR codes)
+                8,  // ITF (interleaved 2 of 5)
+                4,  // CODE_93
                 1,  // AZTEC
                 2,  // CODABAR
-                3,  // CODE_39
-                4,  // CODE_93
-                5,  // CODE_128
                 6,  // DATA_MATRIX
                 7,  // MAXICODE
-                8,  // ITF
-                9,  // EAN_13
-                10, // EAN_8
                 11, // PDF_417
                 12, // RSS_14
                 13, // RSS_EXPANDED
-                14, // UPC_A
-                15, // UPC_E
                 16, // UPC_EAN_EXTENSION
               ],
             },
