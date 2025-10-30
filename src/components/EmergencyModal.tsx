@@ -206,11 +206,11 @@ Thank you.`);
           <div className="space-y-4 py-4">
             {/* Selected Warranty Details */}
             <div className={`p-4 rounded-lg border-2 ${getWarrantyStatus(selectedWarranty.warranty_end_date).borderColor} ${getWarrantyStatus(selectedWarranty.warranty_end_date).bgColor}`}>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-bold text-xl">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                <h3 className="font-bold text-lg sm:text-xl break-words">
                   {selectedWarranty.brand} {selectedWarranty.product_name}
                 </h3>
-                <Badge variant="outline" className={`${getWarrantyStatus(selectedWarranty.warranty_end_date).color} border-current`}>
+                <Badge variant="outline" className={`${getWarrantyStatus(selectedWarranty.warranty_end_date).color} border-current shrink-0 self-start sm:self-center`}>
                   {getWarrantyStatus(selectedWarranty.warranty_end_date).label}
                 </Badge>
               </div>

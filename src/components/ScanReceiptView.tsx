@@ -22,6 +22,20 @@ export const ScanReceiptView = ({ onImageCapture, onReceiptCapture, onBarcodeSca
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const videoRef = useRef<HTMLDivElement>(null);
 
+  // Cleanup function to stop scanner
+  const stopScanner = async () => {
+    if (scannerRef.current) {
+      try {
+        await scannerRef.current.stop();
+        await scannerRef.current.clear();
+        scannerRef.current = null;
+      } catch (err) {
+        console.error("Error stopping scanner:", err);
+      }
+    }
+    setScanMode(null);
+  };
+
   const startBarcodeScanner = async () => {
     setScanMode('barcode');
   };
@@ -99,18 +113,6 @@ export const ScanReceiptView = ({ onImageCapture, onReceiptCapture, onBarcodeSca
       }
     };
   }, [scanMode]);
-
-  const stopScanner = async () => {
-    if (scannerRef.current) {
-      try {
-        await scannerRef.current.stop();
-        scannerRef.current.clear();
-      } catch (err) {
-        console.error("Error stopping scanner:", err);
-      }
-    }
-    setScanMode(null);
-  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

@@ -306,8 +306,12 @@ export const AddWarrantyDialog = () => {
       </Button>
       
       <Dialog open={open} onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          // Reset view to scan mode to stop any active scanner
+          setView('scan');
+          resetForm();
+        }
         setOpen(isOpen);
-        if (!isOpen) resetForm();
       }}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto p-0">
         {view === 'scan' ? (
