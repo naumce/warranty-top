@@ -281,13 +281,10 @@ export const AddWarrantyDialog = () => {
   };
 
   const handleOpenDialog = () => {
-    console.log('🔥 ADD WARRANTY BUTTON CLICKED');
     // Check if user can add warranty
     const check = canAddWarranty();
-    console.log('🔥 Can add warranty check:', check);
     
     if (!check.allowed) {
-      console.log('🔥 NOT ALLOWED - showing upgrade prompt');
       // Show upgrade prompt
       setUpgradeReason(check.reason);
       setUpgradeTier((check as any).currentTier || 'free');
@@ -295,7 +292,6 @@ export const AddWarrantyDialog = () => {
       return;
     }
     
-    console.log('🔥 OPENING DIALOG');
     // Open dialog
     setOpen(true);
   };

@@ -2,26 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Force full-bleed camera video for scanner to avoid white stripes */
-/* Html5Qrcode creates nested divs with inline styles - we override them */
+/* Scanner container - force fullscreen */
 #enhanced-barcode-scanner {
-  position: relative !important;
-  overflow: hidden !important;
   background: #000 !important;
-}
-
-#enhanced-barcode-scanner > div,
-#enhanced-barcode-scanner video,
-#enhanced-barcode-scanner canvas {
   position: absolute !important;
   top: 0 !important;
   left: 0 !important;
   width: 100% !important;
   height: 100% !important;
-  background: #000 !important;
 }
 
 #enhanced-barcode-scanner video {
+  width: 100% !important;
+  height: 100% !important;
   object-fit: cover !important;
 }
 

@@ -24,10 +24,8 @@ export const ScanReceiptView = ({ onImageCapture, onReceiptCapture, onBarcodeSca
   const videoRef = useRef<HTMLDivElement>(null);
 
   const startBarcodeScanner = async () => {
-    console.log('🔥🔥🔥 SCAN BARCODE BUTTON CLICKED - STARTING SCANNER');
     setScanMode('barcode');
     onScannerStateChange?.(true);
-    console.log('🔥🔥🔥 scanMode set to barcode');
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -93,8 +91,6 @@ export const ScanReceiptView = ({ onImageCapture, onReceiptCapture, onBarcodeSca
     }
   };
 
-  console.log('🔥 ScanReceiptView render - scanMode:', scanMode);
-  
   return (
     <>
       {scanMode === 'barcode' && createPortal(

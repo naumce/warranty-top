@@ -36,7 +36,10 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
   const stop = async () => {
     if (scannerRef.current) {
       try {
-        await scannerRef.current.stop();
+        const state = await scannerRef.current.getState();
+        if (state === 2) { // Scanning state
+          await scannerRef.current.stop();
+        }
         await scannerRef.current.clear();
       } catch (err) {
         console.error("Error stopping scanner:", err);
@@ -47,16 +50,13 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
   };
 
   const start = async () => {
-    console.log('🎥 BarcodeScanner START called');
     await stop();
     setError(null);
     scanCountRef.current = 0;
 
     try {
-      console.log('🎥 Creating Html5Qrcode instance for:', SCANNER_ELEMENT_ID);
       const html5 = new Html5Qrcode(SCANNER_ELEMENT_ID);
       scannerRef.current = html5;
-      console.log('🎥 Html5Qrcode instance created, starting camera...');
 
       // Mobile-first: larger scan area, optimized for barcodes
       const qrbox = (viewWidth: number, viewHeight: number) => {
@@ -67,7 +67,6 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
       };
 
       // Try back camera first (environment), fallback to any available
-      console.log('🎥 Calling html5.start with config...');
       await html5.start(
         { facingMode: "environment" },
         {
@@ -85,8 +84,6 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
           if (last && last.text === decodedText && now - last.at < 500) {
             return;
           }
-          
-          console.log("✅ Barcode detected:", decodedText, result);
           lastResultRef.current = { text: decodedText, at: now };
 
           const formatName = (result as any)?.result?.format?.formatName;
@@ -105,50 +102,6 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
           scanCountRef.current++;
         }
       );
-      
-      console.log('🎥 Camera started successfully!');
-
-      // CRITICAL: Force video to fill container and eliminate letterboxing
-      // Html5Qrcode creates nested divs with inline styles, we need to override them
-      setTimeout(() => {
-        try {
-          const container = document.getElementById(SCANNER_ELEMENT_ID);
-          if (!container) return;
-
-          // Force all child divs to fill
-          const allDivs = container.querySelectorAll('div');
-          allDivs.forEach((div) => {
-            (div as HTMLElement).style.width = '100%';
-            (div as HTMLElement).style.height = '100%';
-            (div as HTMLElement).style.position = 'absolute';
-            (div as HTMLElement).style.top = '0';
-            (div as HTMLElement).style.left = '0';
-          });
-
-          // Force video to cover
-          const videoEl = container.querySelector('video') as HTMLVideoElement | null;
-          if (videoEl) {
-            videoEl.style.width = '100%';
-            videoEl.style.height = '100%';
-            videoEl.style.objectFit = 'cover';
-            videoEl.style.position = 'absolute';
-            videoEl.style.top = '0';
-            videoEl.style.left = '0';
-          }
-
-          // Force canvas to cover (library uses canvas for overlay)
-          const canvasEl = container.querySelector('canvas') as HTMLCanvasElement | null;
-          if (canvasEl) {
-            canvasEl.style.width = '100%';
-            canvasEl.style.height = '100%';
-            canvasEl.style.position = 'absolute';
-            canvasEl.style.top = '0';
-            canvasEl.style.left = '0';
-          }
-        } catch (err) {
-          console.error('Failed to style scanner elements:', err);
-        }
-      }, 300); // Longer delay to ensure library has rendered
 
       // Check for torch after a delay (camera needs to initialize)
       setTimeout(() => {
@@ -163,9 +116,7 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
       }, 1000);
 
     } catch (err: any) {
-      console.error("🎥 ❌ Scanner error:", err);
-      console.error("🎥 ❌ Error message:", err?.message);
-      console.error("🎥 ❌ Error stack:", err?.stack);
+      console.error("Scanner error:", err);
       setError(err?.message || "Failed to start camera");
     }
   };
@@ -193,82 +144,62 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black flex flex-col">
-      {/* Mobile-first header - compact */}
-      <div className="flex items-center justify-between p-3 bg-black/80 backdrop-blur-sm">
-        <h2 className="text-lg font-semibold text-white">Scan Barcode</h2>
-        <div className="flex items-center gap-2">
-          {torchAvailable && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleTorch}
-              className="text-white hover:bg-white/20"
-              title="Flashlight"
-            >
-              <Flashlight className={`h-5 w-5 ${torchOn ? "fill-current" : ""}`} />
-            </Button>
-          )}
+    <div className="fixed inset-0 z-[100] bg-black">
+      {/* Fullscreen scanner */}
+      <div className="absolute inset-0">
+        <div 
+          id={SCANNER_ELEMENT_ID} 
+          className="w-full h-full bg-black"
+        />
+      </div>
+
+      {/* Floating close button - top right */}
+      <div className="absolute top-4 right-4 z-10 flex gap-2">
+        {torchAvailable && (
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => {
-              void stop();
-              onClose();
-            }}
-            className="text-white hover:bg-white/20"
+            onClick={toggleTorch}
+            className="text-white hover:bg-white/20 bg-black/50"
+            title="Flashlight"
           >
-            <X className="h-6 w-6" />
+            <Flashlight className={`h-5 w-5 ${torchOn ? "fill-current" : ""}`} />
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => {
+            void stop();
+            onClose();
+          }}
+          className="text-white hover:bg-white/20 bg-black/50"
+        >
+          <X className="h-6 w-6" />
+        </Button>
+      </div>
+
+      {/* Floating instructions - bottom */}
+      <div className="absolute bottom-4 left-0 right-0 z-10 px-4">
+        <div className="bg-black/50 backdrop-blur-sm rounded-lg p-3 text-center">
+          <p className="text-white text-sm font-medium">Point camera at barcode</p>
+          <p className="text-white/70 text-xs mt-1">Keep steady within the frame</p>
+        </div>
+      </div>
+
+      {error && (
+        <div className="absolute bottom-20 left-4 right-4 z-10 bg-red-500/90 text-white p-3 rounded-lg text-sm">
+          {error}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => void start()}
+            className="mt-2 text-white hover:bg-white/20"
+          >
+            Retry
           </Button>
         </div>
-      </div>
-
-      {/* Scanner view - absolute positioning to avoid flex conflicts */}
-      <div className="absolute inset-0 top-[52px] bottom-[60px]" style={{ minHeight: '400px' }}>
-        <div 
-          id={SCANNER_ELEMENT_ID} 
-          className="w-full h-full bg-black relative"
-          style={{ minHeight: '400px' }}
-        />
-        
-        {/* Overlay with scan guide */}
-        <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-          <div className="border-2 border-green-400 rounded-lg shadow-lg" 
-               style={{ 
-                 width: "85%", 
-                 maxWidth: "600px",
-                 height: "250px",
-                 maxHeight: "40vh"
-               }}>
-            <div className="absolute -top-8 left-0 right-0 text-center">
-              <p className="text-white text-sm font-medium drop-shadow-lg">
-                Point camera at barcode
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {error && (
-          <div className="absolute bottom-20 left-4 right-4 bg-red-500/90 text-white p-3 rounded-lg text-sm">
-            {error}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => void start()}
-              className="mt-2 text-white hover:bg-white/20"
-            >
-              Retry
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* Mobile-first footer instructions */}
-      <div className="p-4 bg-black/80 backdrop-blur-sm">
-        <p className="text-white/80 text-xs text-center">
-          Keep barcode steady within the frame. Ensure good lighting.
-        </p>
-      </div>
+      )}
     </div>
   );
 }
