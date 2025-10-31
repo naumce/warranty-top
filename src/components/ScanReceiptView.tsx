@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Camera, Upload, X, ScanBarcode, Keyboard } from "lucide-react";
 import { toast } from "sonner";
@@ -23,8 +24,10 @@ export const ScanReceiptView = ({ onImageCapture, onReceiptCapture, onBarcodeSca
   const videoRef = useRef<HTMLDivElement>(null);
 
   const startBarcodeScanner = async () => {
+    console.log('🔥🔥🔥 SCAN BARCODE BUTTON CLICKED - STARTING SCANNER');
     setScanMode('barcode');
     onScannerStateChange?.(true);
+    console.log('🔥🔥🔥 scanMode set to barcode');
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,9 +93,11 @@ export const ScanReceiptView = ({ onImageCapture, onReceiptCapture, onBarcodeSca
     }
   };
 
+  console.log('🔥 ScanReceiptView render - scanMode:', scanMode);
+  
   return (
     <>
-      {scanMode === 'barcode' && (
+      {scanMode === 'barcode' && createPortal(
         <BarcodeScanner
           onScan={(text, format) => {
             onBarcodeScanned(text, format);
@@ -104,7 +109,8 @@ export const ScanReceiptView = ({ onImageCapture, onReceiptCapture, onBarcodeSca
             setScanMode(null);
             onScannerStateChange?.(false);
           }}
-        />
+        />,
+        document.body
       )}
       
       {scanMode !== 'barcode' && (

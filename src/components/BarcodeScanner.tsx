@@ -47,13 +47,16 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
   };
 
   const start = async () => {
+    console.log('🎥 BarcodeScanner START called');
     await stop();
     setError(null);
     scanCountRef.current = 0;
 
     try {
+      console.log('🎥 Creating Html5Qrcode instance for:', SCANNER_ELEMENT_ID);
       const html5 = new Html5Qrcode(SCANNER_ELEMENT_ID);
       scannerRef.current = html5;
+      console.log('🎥 Html5Qrcode instance created, starting camera...');
 
       // Mobile-first: larger scan area, optimized for barcodes
       const qrbox = (viewWidth: number, viewHeight: number) => {
@@ -64,21 +67,14 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
       };
 
       // Try back camera first (environment), fallback to any available
+      console.log('🎥 Calling html5.start with config...');
       await html5.start(
         { facingMode: "environment" },
         {
-          fps: 30, // Higher FPS for better detection
+          fps: 30,
           qrbox,
-          aspectRatio: 1.777778, // 16:9
+          aspectRatio: 1.777778,
           disableFlip: false,
-          // Critical: enable experimental barcode detector
-          experimentalFeatures: {
-            useBarCodeDetectorIfSupported: true,
-          } as any,
-          formatsToSupport: formats,
-          // Better detection settings
-          rememberLastUsedCamera: true,
-          supportedScanTypes: [Html5Qrcode.SCAN_TYPE_CAMERA],
         },
         (decodedText, result) => {
           scanCountRef.current++;
@@ -109,11 +105,54 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
           scanCountRef.current++;
         }
       );
+      
+      console.log('🎥 Camera started successfully!');
+
+      // CRITICAL: Force video to fill container and eliminate letterboxing
+      // Html5Qrcode creates nested divs with inline styles, we need to override them
+      setTimeout(() => {
+        try {
+          const container = document.getElementById(SCANNER_ELEMENT_ID);
+          if (!container) return;
+
+          // Force all child divs to fill
+          const allDivs = container.querySelectorAll('div');
+          allDivs.forEach((div) => {
+            (div as HTMLElement).style.width = '100%';
+            (div as HTMLElement).style.height = '100%';
+            (div as HTMLElement).style.position = 'absolute';
+            (div as HTMLElement).style.top = '0';
+            (div as HTMLElement).style.left = '0';
+          });
+
+          // Force video to cover
+          const videoEl = container.querySelector('video') as HTMLVideoElement | null;
+          if (videoEl) {
+            videoEl.style.width = '100%';
+            videoEl.style.height = '100%';
+            videoEl.style.objectFit = 'cover';
+            videoEl.style.position = 'absolute';
+            videoEl.style.top = '0';
+            videoEl.style.left = '0';
+          }
+
+          // Force canvas to cover (library uses canvas for overlay)
+          const canvasEl = container.querySelector('canvas') as HTMLCanvasElement | null;
+          if (canvasEl) {
+            canvasEl.style.width = '100%';
+            canvasEl.style.height = '100%';
+            canvasEl.style.position = 'absolute';
+            canvasEl.style.top = '0';
+            canvasEl.style.left = '0';
+          }
+        } catch (err) {
+          console.error('Failed to style scanner elements:', err);
+        }
+      }, 300); // Longer delay to ensure library has rendered
 
       // Check for torch after a delay (camera needs to initialize)
       setTimeout(() => {
         try {
-          // @ts-expect-error accessing private stream for torch
           const stream: MediaStream | undefined = (scannerRef.current as any)?._localMediaStream;
           const track = stream?.getVideoTracks?.()[0];
           const capabilities = track?.getCapabilities?.();
@@ -124,7 +163,9 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
       }, 1000);
 
     } catch (err: any) {
-      console.error("Scanner error:", err);
+      console.error("🎥 ❌ Scanner error:", err);
+      console.error("🎥 ❌ Error message:", err?.message);
+      console.error("🎥 ❌ Error stack:", err?.stack);
       setError(err?.message || "Failed to start camera");
     }
   };
@@ -140,7 +181,6 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
   const toggleTorch = async () => {
     if (!scannerRef.current) return;
     try {
-      // @ts-expect-error accessing private stream for torch
       const stream: MediaStream | undefined = (scannerRef.current as any)?._localMediaStream;
       const track = stream?.getVideoTracks?.[0];
       if (!track) return;
@@ -153,7 +193,7 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col">
+    <div className="fixed inset-0 z-[100] bg-black flex flex-col">
       {/* Mobile-first header - compact */}
       <div className="flex items-center justify-between p-3 bg-black/80 backdrop-blur-sm">
         <h2 className="text-lg font-semibold text-white">Scan Barcode</h2>
@@ -183,12 +223,12 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
         </div>
       </div>
 
-      {/* Scanner view - full screen on mobile */}
-      <div className="flex-1 relative flex items-center justify-center min-h-0">
+      {/* Scanner view - absolute positioning to avoid flex conflicts */}
+      <div className="absolute inset-0 top-[52px] bottom-[60px]" style={{ minHeight: '400px' }}>
         <div 
           id={SCANNER_ELEMENT_ID} 
-          className="w-full h-full"
-          style={{ maxHeight: "100vh" }}
+          className="w-full h-full bg-black relative"
+          style={{ minHeight: '400px' }}
         />
         
         {/* Overlay with scan guide */}
