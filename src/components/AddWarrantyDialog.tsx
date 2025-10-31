@@ -24,6 +24,7 @@ export const AddWarrantyDialog = () => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<'scan' | 'manual'>('scan');
+  const [scannerActive, setScannerActive] = useState(false);
   const [receiptImage, setReceiptImage] = useState<File | null>(null);
   const [scannedBarcode, setScannedBarcode] = useState<string>("");
   const [receiptOCRData, setReceiptOCRData] = useState<ReceiptData | null>(null);
@@ -309,6 +310,7 @@ export const AddWarrantyDialog = () => {
         if (!isOpen) {
           // Reset view to scan mode to stop any active scanner
           setView('scan');
+          setScannerActive(false);
           resetForm();
         }
         setOpen(isOpen);
@@ -318,9 +320,13 @@ export const AddWarrantyDialog = () => {
           <ScanReceiptView
             onImageCapture={handleImageCapture}
             onReceiptCapture={handleReceiptCapture}
-            onBarcodeScanned={handleBarcodeScanned}
+            onBarcodeScanned={(code, format) => {
+              handleBarcodeScanned(code, format);
+              setScannerActive(false);
+            }}
             onManualEntry={() => setView('manual')}
             onCancel={() => setOpen(false)}
+            onScannerStateChange={setScannerActive}
           />
         ) : (
           <>

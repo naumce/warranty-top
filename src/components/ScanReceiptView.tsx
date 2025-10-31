@@ -12,9 +12,10 @@ interface ScanReceiptViewProps {
   onBarcodeScanned: (code: string, format?: string) => void;
   onManualEntry: () => void;
   onCancel: () => void;
+  onScannerStateChange?: (active: boolean) => void;
 }
 
-export const ScanReceiptView = ({ onImageCapture, onReceiptCapture, onBarcodeScanned, onManualEntry, onCancel }: ScanReceiptViewProps) => {
+export const ScanReceiptView = ({ onImageCapture, onReceiptCapture, onBarcodeScanned, onManualEntry, onCancel, onScannerStateChange }: ScanReceiptViewProps) => {
   const [scanMode, setScanMode] = useState<'camera' | 'barcode' | 'receipt' | null>(null);
   const [processingReceipt, setProcessingReceipt] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -23,6 +24,7 @@ export const ScanReceiptView = ({ onImageCapture, onReceiptCapture, onBarcodeSca
 
   const startBarcodeScanner = async () => {
     setScanMode('barcode');
+    onScannerStateChange?.(true);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -96,8 +98,12 @@ export const ScanReceiptView = ({ onImageCapture, onReceiptCapture, onBarcodeSca
             onBarcodeScanned(text, format);
             toast.success(`Barcode scanned: ${text}`);
             setScanMode(null);
+            onScannerStateChange?.(false);
           }}
-          onClose={() => setScanMode(null)}
+          onClose={() => {
+            setScanMode(null);
+            onScannerStateChange?.(false);
+          }}
         />
       )}
       
