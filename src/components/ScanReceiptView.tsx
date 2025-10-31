@@ -89,8 +89,8 @@ export const ScanReceiptView = ({ onImageCapture, onReceiptCapture, onBarcodeSca
   };
 
   return (
-    <div className="flex flex-col gap-4 p-4">
-      {scanMode === 'barcode' ? (
+    <>
+      {scanMode === 'barcode' && (
         <BarcodeScanner
           onScan={(text, format) => {
             onBarcodeScanned(text, format);
@@ -99,7 +99,10 @@ export const ScanReceiptView = ({ onImageCapture, onReceiptCapture, onBarcodeSca
           }}
           onClose={() => setScanMode(null)}
         />
-      ) : (
+      )}
+      
+      {scanMode !== 'barcode' && (
+        <div className="flex flex-col gap-4 p-4">
         <>
           <div className="text-center mb-2">
             <h3 className="text-lg font-semibold mb-2">Add Warranty</h3>
@@ -203,7 +206,8 @@ export const ScanReceiptView = ({ onImageCapture, onReceiptCapture, onBarcodeSca
             Cancel
           </Button>
         </>
+        </div>
       )}
-    </div>
+    </>
   );
 };
