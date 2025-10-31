@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, ArrowLeft, Keyboard, Search, ExternalLink } from "lucide-react";
+import { Plus, ArrowLeft, Keyboard, Search, ExternalLink, Camera, Image as ImageIcon, X } from "lucide-react";
 import { ScanReceiptView } from "./ScanReceiptView";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { lookupBarcode, getBarcodeSearchUrl, getGoogleShoppingUrl, getAmazonSearchUrl } from "@/lib/barcode-lookup";
@@ -16,6 +16,7 @@ import { ReceiptData } from "@/lib/receipt-ocr";
 import { WarrantyDurationPicker } from "./WarrantyDurationPicker";
 import { useUserLimits } from "@/hooks/useUserLimits";
 import { UpgradePrompt } from "./UpgradePrompt";
+import { uploadWarrantyImage, saveImageMetadata } from "@/lib/storage";
 
 export const AddWarrantyDialog = () => {
   const queryClient = useQueryClient();
@@ -31,6 +32,8 @@ export const AddWarrantyDialog = () => {
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [upgradeReason, setUpgradeReason] = useState("");
   const [upgradeTier, setUpgradeTier] = useState("free");
+  const [attachedPhotos, setAttachedPhotos] = useState<File[]>([]);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
     product_name: "",
@@ -82,6 +85,25 @@ export const AddWarrantyDialog = () => {
         description: `${ocrData.storeName || 'Store'} - ${ocrData.purchaseDate || 'Date'}`,
       });
     }
+  };
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    // Check file sizes
+    const oversized = files.filter(f => f.size > 10 * 1024 * 1024);
+    if (oversized.length > 0) {
+      toast.error(`${oversized.length} file(s) too large. Max size is 10MB per file.`);
+      return;
+    }
+
+    setAttachedPhotos(prev => [...prev, ...files]);
+    toast.success(`${files.length} photo(s) attached`);
+  };
+
+  const removePhoto = (index: number) => {
+    setAttachedPhotos(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleBarcodeScanned = async (code: string, barcodeFormat?: string) => {
@@ -228,34 +250,69 @@ export const AddWarrantyDialog = () => {
       return;
     }
 
-    const { error } = await supabase.from("warranties").insert({
-      user_id: user.id,
-      product_name: formData.product_name,
-      brand: formData.brand || null,
-      model: formData.model || null,
-      serial_number: formData.serial_number || null,
-      purchase_date: formData.purchase_date,
-      warranty_end_date: formData.warranty_end_date,
-      store_name: formData.store_name || null,
-      store_address: formData.store_address || null,
-      store_city: formData.store_city || null,
-      store_phone: formData.store_phone || null,
-      receipt_number: formData.receipt_number || null,
-      purchase_price: formData.purchase_price ? parseFloat(formData.purchase_price) : null,
-      notes: formData.notes || null,
-      receipt_ocr_data: receiptOCRData ? JSON.stringify(receiptOCRData) : null,
-    });
+    try {
+      // Insert the warranty first
+      const { data: warranty, error: warrantyError } = await supabase
+        .from("warranties")
+        .insert({
+          user_id: user.id,
+          product_name: formData.product_name,
+          brand: formData.brand || null,
+          model: formData.model || null,
+          serial_number: formData.serial_number || null,
+          purchase_date: formData.purchase_date,
+          warranty_end_date: formData.warranty_end_date,
+          store_name: formData.store_name || null,
+          store_address: formData.store_address || null,
+          store_city: formData.store_city || null,
+          store_phone: formData.store_phone || null,
+          receipt_number: formData.receipt_number || null,
+          purchase_price: formData.purchase_price ? parseFloat(formData.purchase_price) : null,
+          notes: formData.notes || null,
+          receipt_ocr_data: receiptOCRData ? JSON.stringify(receiptOCRData) : null,
+        })
+        .select()
+        .single();
 
-    if (error) {
-      toast.error("Failed to add warranty");
-      console.error(error);
-    } else {
+      if (warrantyError) {
+        toast.error("Failed to add warranty");
+        console.error(warrantyError);
+        setLoading(false);
+        return;
+      }
+
+      // Upload attached photos if any
+      if (attachedPhotos.length > 0 && warranty) {
+        toast.info(`Uploading ${attachedPhotos.length} photo(s)...`);
+        
+        for (const photo of attachedPhotos) {
+          try {
+            const publicUrl = await uploadWarrantyImage(user.id, warranty.id, photo);
+            await saveImageMetadata({
+              warranty_id: warranty.id,
+              file_url: publicUrl,
+              file_name: photo.name,
+              file_size: photo.size,
+              mime_type: photo.type,
+              image_type: 'product', // Default type
+            });
+          } catch (uploadError) {
+            console.error("Error uploading photo:", uploadError);
+            // Continue with other photos even if one fails
+          }
+        }
+      }
+
       toast.success("Warranty added successfully!");
       queryClient.invalidateQueries({ queryKey: ["warranties"] });
       setOpen(false);
       resetForm();
+    } catch (error) {
+      toast.error("Failed to add warranty");
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const resetForm = () => {
@@ -278,6 +335,7 @@ export const AddWarrantyDialog = () => {
     setReceiptImage(null);
     setScannedBarcode("");
     setReceiptOCRData(null);
+    setAttachedPhotos([]);
   };
 
   const handleOpenDialog = () => {
@@ -480,6 +538,79 @@ export const AddWarrantyDialog = () => {
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     rows={3}
                   />
+                </div>
+
+                {/* Photo Attachment Section */}
+                <div className="grid gap-3 pt-2 border-t">
+                  <Label>Attach Photos (Optional)</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Add photos of the product, warranty card, receipt, or packaging
+                  </p>
+                  
+                  <div className="flex gap-2">
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handlePhotoSelect}
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => photoInputRef.current?.click()}
+                    >
+                      <ImageIcon className="h-4 w-4 mr-2" />
+                      Choose Photos
+                    </Button>
+                    
+                    {/* Camera capture on mobile */}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (photoInputRef.current) {
+                          photoInputRef.current.accept = "image/*";
+                          photoInputRef.current.capture = "environment" as any;
+                          photoInputRef.current.click();
+                        }
+                      }}
+                      className="md:hidden"
+                    >
+                      <Camera className="h-4 w-4 mr-2" />
+                      Take Photo
+                    </Button>
+                  </div>
+
+                  {/* Photo Previews */}
+                  {attachedPhotos.length > 0 && (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                      {attachedPhotos.map((photo, index) => (
+                        <div key={index} className="relative group aspect-square rounded-md overflow-hidden border">
+                          <img
+                            src={URL.createObjectURL(photo)}
+                            alt={`Attachment ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => removePhoto(index)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 truncate">
+                            {photo.name}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
               <DialogFooter className="mt-6 gap-2">
