@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Html5Qrcode, Html5QrcodeSupportedFormats, type Html5QrcodeCamera } from "html5-qrcode";
-import { Flashlight, Pause, Play, RefreshCw, X } from "lucide-react";
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
+import { Flashlight, X } from "lucide-react";
 
 interface BarcodeScannerProps {
   onScan: (text: string, formatName?: string) => void;
@@ -9,16 +9,14 @@ interface BarcodeScannerProps {
 }
 
 const SCANNER_ELEMENT_ID = "enhanced-barcode-scanner";
-const LAST_CAMERA_KEY = "warranty:lastCameraId";
 
 export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
-  const [cameras, setCameras] = useState<Html5QrcodeCamera[]>([]);
-  const [activeCameraId, setActiveCameraId] = useState<string | undefined>(undefined);
-  const [isRunning, setIsRunning] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
   const [torchAvailable, setTorchAvailable] = useState<boolean | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const lastResultRef = useRef<{ text: string; at: number } | null>(null);
+  const scanCountRef = useRef(0);
 
   const formats = useMemo(() => [
     Html5QrcodeSupportedFormats.EAN_13,
@@ -35,169 +33,204 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
     Html5QrcodeSupportedFormats.DATA_MATRIX,
   ], []);
 
-  useEffect(() => {
-    let mounted = true;
-    Html5Qrcode.getCameras()
-      .then((devices) => {
-        if (!mounted) return;
-        setCameras(devices);
-        const saved = localStorage.getItem(LAST_CAMERA_KEY) || undefined;
-        const initial = devices.find((d) => d.id === saved)?.id || devices[0]?.id;
-        setActiveCameraId(initial);
-      })
-      .catch(() => {
-        setCameras([]);
-      });
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
   const stop = async () => {
     if (scannerRef.current) {
       try {
         await scannerRef.current.stop();
         await scannerRef.current.clear();
+      } catch (err) {
+        console.error("Error stopping scanner:", err);
       } finally {
         scannerRef.current = null;
       }
     }
-    setIsRunning(false);
   };
 
-  const start = async (cameraId: string | undefined) => {
-    if (!cameraId) return;
+  const start = async () => {
     await stop();
-    const html5 = new Html5Qrcode(SCANNER_ELEMENT_ID);
-    scannerRef.current = html5;
+    setError(null);
+    scanCountRef.current = 0;
 
-    // Dynamic ROI sized for linear codes
-    const qrbox = (viewWidth: number, viewHeight: number) => {
-      const width = Math.min(480, Math.floor(viewWidth * 0.9));
-      const height = Math.max(140, Math.floor(width / 2.8));
-      return { width, height } as const;
-    };
-
-    await html5.start(
-      { deviceId: { exact: cameraId } },
-      {
-        fps: 24,
-        qrbox,
-        aspectRatio: 2.4,
-        disableFlip: false,
-        experimentalFeatures: {
-          useBarCodeDetectorIfSupported: true,
-        } as any,
-        formatsToSupport: formats,
-      },
-      (decodedText, result) => {
-        const now = Date.now();
-        const last = lastResultRef.current;
-        if (last && last.text === decodedText && now - last.at < 1500) return;
-        lastResultRef.current = { text: decodedText, at: now };
-
-        const formatName = (result as any)?.result?.format?.formatName;
-        onScan(decodedText, formatName);
-        void stop();
-      },
-      () => {}
-    );
-
-    // Torch capability probe (best-effort)
     try {
-      // @ts-expect-error private access: getState is not public, best-effort check
-      const stream: MediaStream | undefined = (scannerRef.current as any)?._localMediaStream;
-      const track = stream?.getVideoTracks?.()[0];
-      const capabilities = track?.getCapabilities?.();
-      setTorchAvailable(Boolean(capabilities && "torch" in capabilities));
-    } catch {
-      setTorchAvailable(null);
-    }
+      const html5 = new Html5Qrcode(SCANNER_ELEMENT_ID);
+      scannerRef.current = html5;
 
-    setIsRunning(true);
+      // Mobile-first: larger scan area, optimized for barcodes
+      const qrbox = (viewWidth: number, viewHeight: number) => {
+        // Use 85% width on mobile, larger height for barcodes
+        const width = Math.min(viewWidth * 0.85, 600);
+        const height = Math.max(200, Math.min(viewHeight * 0.4, 300));
+        return { width, height } as const;
+      };
+
+      // Try back camera first (environment), fallback to any available
+      await html5.start(
+        { facingMode: "environment" },
+        {
+          fps: 30, // Higher FPS for better detection
+          qrbox,
+          aspectRatio: 1.777778, // 16:9
+          disableFlip: false,
+          // Critical: enable experimental barcode detector
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true,
+          } as any,
+          formatsToSupport: formats,
+          // Better detection settings
+          rememberLastUsedCamera: true,
+          supportedScanTypes: [Html5Qrcode.SCAN_TYPE_CAMERA],
+        },
+        (decodedText, result) => {
+          scanCountRef.current++;
+          const now = Date.now();
+          const last = lastResultRef.current;
+          
+          // Reduced debounce: only 500ms to prevent duplicate scans
+          if (last && last.text === decodedText && now - last.at < 500) {
+            return;
+          }
+          
+          console.log("✅ Barcode detected:", decodedText, result);
+          lastResultRef.current = { text: decodedText, at: now };
+
+          const formatName = (result as any)?.result?.format?.formatName;
+          
+          // Fire callback immediately
+          try {
+            onScan(decodedText, formatName);
+            void stop();
+          } catch (err) {
+            console.error("Error in onScan callback:", err);
+          }
+        },
+        (errorMessage) => {
+          // Only log errors, don't spam UI
+          // Errors are normal during scanning
+          scanCountRef.current++;
+        }
+      );
+
+      // Check for torch after a delay (camera needs to initialize)
+      setTimeout(() => {
+        try {
+          // @ts-expect-error accessing private stream for torch
+          const stream: MediaStream | undefined = (scannerRef.current as any)?._localMediaStream;
+          const track = stream?.getVideoTracks?.()[0];
+          const capabilities = track?.getCapabilities?.();
+          setTorchAvailable(Boolean(capabilities && "torch" in capabilities));
+        } catch {
+          setTorchAvailable(false);
+        }
+      }, 1000);
+
+    } catch (err: any) {
+      console.error("Scanner error:", err);
+      setError(err?.message || "Failed to start camera");
+    }
   };
 
   useEffect(() => {
-    if (activeCameraId) {
-      localStorage.setItem(LAST_CAMERA_KEY, activeCameraId);
-      void start(activeCameraId);
-    }
+    void start();
     return () => {
       void stop();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCameraId]);
+  }, []);
 
   const toggleTorch = async () => {
     if (!scannerRef.current) return;
     try {
-      // @ts-expect-error private access: getState is not public, best-effort apply
+      // @ts-expect-error accessing private stream for torch
       const stream: MediaStream | undefined = (scannerRef.current as any)?._localMediaStream;
       const track = stream?.getVideoTracks?.[0];
       if (!track) return;
       await track.applyConstraints({ advanced: [{ torch: !torchOn }] as any });
       setTorchOn((v) => !v);
-    } catch {
+    } catch (err) {
+      console.error("Torch error:", err);
       setTorchAvailable(false);
     }
   };
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-lg font-semibold">Scan Barcode/QR</span>
-          {cameras.length > 1 && (
-            <select
-              className="ml-2 text-sm border rounded px-2 py-1"
-              value={activeCameraId}
-              onChange={(e) => setActiveCameraId(e.target.value)}
-            >
-              {cameras.map((c) => (
-                <option key={c.id} value={c.id}>{c.label || "Camera"}</option>
-              ))}
-            </select>
-          )}
-        </div>
+    <div className="fixed inset-0 z-50 bg-black flex flex-col">
+      {/* Mobile-first header - compact */}
+      <div className="flex items-center justify-between p-3 bg-black/80 backdrop-blur-sm">
+        <h2 className="text-lg font-semibold text-white">Scan Barcode</h2>
         <div className="flex items-center gap-2">
           {torchAvailable && (
-            <Button variant="outline" size="icon" onClick={toggleTorch} title="Toggle flashlight">
-              <Flashlight className="h-4 w-4" />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleTorch}
+              className="text-white hover:bg-white/20"
+              title="Flashlight"
+            >
+              <Flashlight className={`h-5 w-5 ${torchOn ? "fill-current" : ""}`} />
             </Button>
           )}
-          {isRunning ? (
-            <Button variant="outline" size="icon" onClick={() => void stop()} title="Pause">
-              <Pause className="h-4 w-4" />
-            </Button>
-          ) : (
-            <Button variant="outline" size="icon" onClick={() => void start(activeCameraId)} title="Resume">
-              <Play className="h-4 w-4" />
-            </Button>
-          )}
-          <Button variant="outline" size="icon" onClick={() => setActiveCameraId((id) => id)} title="Restart">
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" onClick={() => { void stop(); onClose(); }}>
-            <X className="h-5 w-5" />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              void stop();
+              onClose();
+            }}
+            className="text-white hover:bg-white/20"
+          >
+            <X className="h-6 w-6" />
           </Button>
         </div>
       </div>
 
-      <div className="relative">
-        <div id={SCANNER_ELEMENT_ID} className="w-full rounded-lg overflow-hidden" />
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="border-2 border-green-500/70 rounded-md" style={{ width: "90%", height: 150 }}></div>
+      {/* Scanner view - full screen on mobile */}
+      <div className="flex-1 relative flex items-center justify-center min-h-0">
+        <div 
+          id={SCANNER_ELEMENT_ID} 
+          className="w-full h-full"
+          style={{ maxHeight: "100vh" }}
+        />
+        
+        {/* Overlay with scan guide */}
+        <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+          <div className="border-2 border-green-400 rounded-lg shadow-lg" 
+               style={{ 
+                 width: "85%", 
+                 maxWidth: "600px",
+                 height: "250px",
+                 maxHeight: "40vh"
+               }}>
+            <div className="absolute -top-8 left-0 right-0 text-center">
+              <p className="text-white text-sm font-medium drop-shadow-lg">
+                Point camera at barcode
+              </p>
+            </div>
+          </div>
         </div>
+
+        {error && (
+          <div className="absolute bottom-20 left-4 right-4 bg-red-500/90 text-white p-3 rounded-lg text-sm">
+            {error}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void start()}
+              className="mt-2 text-white hover:bg-white/20"
+            >
+              Retry
+            </Button>
+          </div>
+        )}
       </div>
 
-      <div className="text-xs text-muted-foreground text-center space-y-1">
-        <p>Keep barcode inside the box. Good light. Hold steady.</p>
-        <p>Supports UPC/EAN/Code128/Code39/ITF/QR/PDF417/etc.</p>
+      {/* Mobile-first footer instructions */}
+      <div className="p-4 bg-black/80 backdrop-blur-sm">
+        <p className="text-white/80 text-xs text-center">
+          Keep barcode steady within the frame. Ensure good lighting.
+        </p>
       </div>
     </div>
   );
 }
 
 export default BarcodeScanner;
-
-
