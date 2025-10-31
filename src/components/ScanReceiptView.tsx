@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Camera, Upload, X, ScanBarcode, Keyboard } from "lucide-react";
 import { toast } from "sonner";
-import { Html5Qrcode } from "html5-qrcode";
+import BarcodeScanner from "@/components/BarcodeScanner";
 
 import { extractReceiptData, ReceiptData } from "@/lib/receipt-ocr";
 
@@ -19,100 +19,11 @@ export const ScanReceiptView = ({ onImageCapture, onReceiptCapture, onBarcodeSca
   const [processingReceipt, setProcessingReceipt] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const receiptInputRef = useRef<HTMLInputElement>(null);
-  const scannerRef = useRef<Html5Qrcode | null>(null);
   const videoRef = useRef<HTMLDivElement>(null);
-
-  // Cleanup function to stop scanner
-  const stopScanner = async () => {
-    if (scannerRef.current) {
-      try {
-        await scannerRef.current.stop();
-        await scannerRef.current.clear();
-        scannerRef.current = null;
-      } catch (err) {
-        console.error("Error stopping scanner:", err);
-      }
-    }
-    setScanMode(null);
-  };
 
   const startBarcodeScanner = async () => {
     setScanMode('barcode');
   };
-
-  useEffect(() => {
-    if (scanMode === 'barcode') {
-      // Wait for the DOM to update before initializing the scanner
-      const initScanner = async () => {
-        try {
-          const html5QrCode = new Html5Qrcode("barcode-scanner");
-          scannerRef.current = html5QrCode;
-
-          await html5QrCode.start(
-            { facingMode: "environment" },
-            {
-              fps: 20, // Increased FPS for better detection
-              qrbox: { width: 350, height: 150 }, // Optimized for linear barcodes
-              aspectRatio: 2.33, // Better for standard barcodes
-              disableFlip: false,
-              // Focus on common product barcode formats
-              formatsToSupport: [
-                9,  // EAN_13 (Most common - Europe)
-                10, // EAN_8
-                14, // UPC_A (Most common - USA)
-                15, // UPC_E
-                5,  // CODE_128 (Common for retail)
-                3,  // CODE_39
-                0,  // QR_CODE (for product QR codes)
-                8,  // ITF (interleaved 2 of 5)
-                4,  // CODE_93
-                1,  // AZTEC
-                2,  // CODABAR
-                6,  // DATA_MATRIX
-                7,  // MAXICODE
-                11, // PDF_417
-                12, // RSS_14
-                13, // RSS_EXPANDED
-                16, // UPC_EAN_EXTENSION
-              ],
-            },
-            (decodedText, decodedResult) => {
-              console.log("==========================================");
-              console.log("🔥 BARCODE SCANNED SUCCESSFULLY!");
-              console.log("==========================================");
-              console.log("📦 Decoded Text (Barcode Value):", decodedText);
-              console.log("📊 Full Decoded Result Object:", decodedResult);
-              console.log("📋 Result Format:", decodedResult?.result?.format);
-              console.log("📋 Format Name:", decodedResult?.result?.format?.formatName);
-              console.log("📋 Result Text:", decodedResult?.result?.text);
-              console.log("📋 Decoded Result:", JSON.stringify(decodedResult, null, 2));
-              console.log("==========================================");
-              
-              const formatName = decodedResult?.result?.format?.formatName;
-              onBarcodeScanned(decodedText, formatName);
-              stopScanner();
-              toast.success(`Barcode scanned: ${decodedText}`);
-            },
-            (error) => {
-              // Ignore scan errors, they happen continuously
-            }
-          );
-        } catch (err) {
-          console.error("Error starting scanner:", err);
-          toast.error("Camera access denied or not available");
-          setScanMode(null);
-        }
-      };
-
-      initScanner();
-    }
-
-    return () => {
-      if (scannerRef.current) {
-        stopScanner();
-      }
-    };
-  }, [scanMode]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -180,25 +91,14 @@ export const ScanReceiptView = ({ onImageCapture, onReceiptCapture, onBarcodeSca
   return (
     <div className="flex flex-col gap-4 p-4">
       {scanMode === 'barcode' ? (
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Scan Barcode/QR Code</h3>
-            <Button variant="ghost" size="icon" onClick={stopScanner}>
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
-          <div id="barcode-scanner" ref={videoRef} className="w-full rounded-lg overflow-hidden" />
-          <div className="text-sm text-muted-foreground text-center space-y-2">
-            <p className="font-medium">Point your camera at the barcode</p>
-            <ul className="text-xs space-y-1">
-              <li>• Keep the barcode within the green box</li>
-              <li>• Hold steady and ensure good lighting</li>
-              <li>• Try moving closer or further away</li>
-              <li>• Make sure the barcode is horizontal</li>
-            </ul>
-            <p className="text-xs italic">Supports: UPC, EAN, QR Code, Code 128, and more</p>
-          </div>
-        </div>
+        <BarcodeScanner
+          onScan={(text, format) => {
+            onBarcodeScanned(text, format);
+            toast.success(`Barcode scanned: ${text}`);
+            setScanMode(null);
+          }}
+          onClose={() => setScanMode(null)}
+        />
       ) : (
         <>
           <div className="text-center mb-2">
