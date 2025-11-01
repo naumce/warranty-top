@@ -56,6 +56,7 @@ export default function AISupport() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("locator");
   const [accessDenied, setAccessDenied] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
   
   // Store Locator
   const [locatorLoading, setLocatorLoading] = useState(false);
@@ -85,6 +86,12 @@ export default function AISupport() {
       fetchWarranty();
     }
   }, [id]);
+
+  // Page load animation
+  useEffect(() => {
+    const timer = setTimeout(() => setIsVisible(true), 50);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Check premium access on mount and when limits change
   useEffect(() => {
@@ -487,13 +494,22 @@ export default function AISupport() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-accent to-background">
+    <div className={`
+      min-h-screen bg-gradient-to-br from-background via-accent to-background
+      transition-all duration-700 ease-out
+      ${isVisible ? 'opacity-100' : 'opacity-0'}
+    `}>
       {/* Header */}
       <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate(`/warranty/${id}`)}>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => navigate(`/warranty/${id}`)}
+                className="min-h-[44px] min-w-[44px] active:scale-95 transition-transform duration-150"
+              >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>

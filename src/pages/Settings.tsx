@@ -151,7 +151,12 @@ const Settings = () => {
       <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => navigate("/dashboard")}
+              className="min-h-[44px] min-w-[44px]"
+            >
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex items-center gap-2">
@@ -163,7 +168,11 @@ const Settings = () => {
               </h1>
             </div>
           </div>
-          <Button variant="outline" onClick={handleSignOut}>
+          <Button 
+            variant="outline" 
+            onClick={handleSignOut}
+            className="min-h-[44px]"
+          >
             <LogOut className="h-4 w-4 mr-2" />
             Sign Out
           </Button>
@@ -243,8 +252,8 @@ const Settings = () => {
               <Separator />
 
               {/* Upgrade Button */}
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex-1">
                   <p className="font-medium">Want more features?</p>
                   <p className="text-sm text-muted-foreground">
                     Upgrade to unlock unlimited warranties, more storage, and AI features
@@ -252,7 +261,7 @@ const Settings = () => {
                 </div>
                 <Button 
                   onClick={() => navigate("/upgrade")}
-                  className="bg-gradient-primary"
+                  className="bg-gradient-primary w-full sm:w-auto min-h-[44px] active:scale-95 transition-transform duration-150"
                 >
                   <TrendingUp className="h-4 w-4 mr-2" />
                   Upgrade
@@ -295,7 +304,11 @@ const Settings = () => {
                 />
               </div>
 
-              <Button onClick={handleSaveProfile} disabled={saving}>
+              <Button 
+                onClick={handleSaveProfile} 
+                disabled={saving}
+                className="w-full sm:w-auto min-h-[44px]"
+              >
                 {saving ? "Saving..." : "Save Profile"}
               </Button>
             </CardContent>
@@ -311,9 +324,9 @@ const Settings = () => {
               <CardDescription>Control how you receive warranty reminders</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label className="text-base">Enable Notifications</Label>
+              <div className="flex items-center justify-between gap-4 min-h-[60px]">
+                <div className="space-y-0.5 flex-1">
+                  <Label className="text-base cursor-pointer">Enable Notifications</Label>
                   <p className="text-sm text-muted-foreground">
                     Receive warranty expiration reminders
                   </p>
@@ -323,6 +336,7 @@ const Settings = () => {
                   onCheckedChange={(checked) =>
                     setNotificationSettings({ ...notificationSettings, enabled: checked })
                   }
+                  className="shrink-0"
                 />
               </div>
 
@@ -333,8 +347,8 @@ const Settings = () => {
                   <div className="space-y-4">
                     <h4 className="font-medium text-sm">Reminder Timeline</h4>
                     
-                    <div className="flex items-center justify-between">
-                      <Label>30 Days Before</Label>
+                    <div className="flex items-center justify-between gap-4 min-h-[44px]">
+                      <Label className="cursor-pointer flex-1">30 Days Before</Label>
                       <Switch
                         checked={notificationSettings.reminders.days30}
                         onCheckedChange={(checked) =>
@@ -343,11 +357,12 @@ const Settings = () => {
                             reminders: { ...notificationSettings.reminders, days30: checked },
                           })
                         }
+                        className="shrink-0"
                       />
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <Label>14 Days Before</Label>
+                    <div className="flex items-center justify-between gap-4 min-h-[44px]">
+                      <Label className="cursor-pointer flex-1">14 Days Before</Label>
                       <Switch
                         checked={notificationSettings.reminders.days14}
                         onCheckedChange={(checked) =>
@@ -356,11 +371,12 @@ const Settings = () => {
                             reminders: { ...notificationSettings.reminders, days14: checked },
                           })
                         }
+                        className="shrink-0"
                       />
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <Label className="text-warning">7 Days Before ⚠️</Label>
+                    <div className="flex items-center justify-between gap-4 min-h-[44px]">
+                      <Label className="text-warning cursor-pointer flex-1">7 Days Before ⚠️</Label>
                       <Switch
                         checked={notificationSettings.reminders.days7}
                         onCheckedChange={(checked) =>
@@ -369,11 +385,12 @@ const Settings = () => {
                             reminders: { ...notificationSettings.reminders, days7: checked },
                           })
                         }
+                        className="shrink-0"
                       />
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <Label className="text-danger">1 Day Before 🚨</Label>
+                    <div className="flex items-center justify-between gap-4 min-h-[44px]">
+                      <Label className="text-danger cursor-pointer flex-1">1 Day Before 🚨</Label>
                       <Switch
                         checked={notificationSettings.reminders.days1}
                         onCheckedChange={(checked) =>
@@ -382,11 +399,12 @@ const Settings = () => {
                             reminders: { ...notificationSettings.reminders, days1: checked },
                           })
                         }
+                        className="shrink-0"
                       />
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <Label className="text-danger">On Expiration Day 💥</Label>
+                    <div className="flex items-center justify-between gap-4 min-h-[44px]">
+                      <Label className="text-danger cursor-pointer flex-1">On Expiration Day 💥</Label>
                       <Switch
                         checked={notificationSettings.reminders.onExpiry}
                         onCheckedChange={(checked) =>
@@ -395,13 +413,17 @@ const Settings = () => {
                             reminders: { ...notificationSettings.reminders, onExpiry: checked },
                           })
                         }
+                        className="shrink-0"
                       />
                     </div>
                   </div>
                 </>
               )}
 
-              <Button onClick={handleSaveNotifications}>
+              <Button 
+                onClick={handleSaveNotifications}
+                className="w-full sm:w-auto min-h-[44px]"
+              >
                 Save Notification Preferences
               </Button>
             </CardContent>
@@ -422,7 +444,11 @@ const Settings = () => {
                 <p className="text-sm text-muted-foreground mb-3">
                   Download all your warranty data as JSON
                 </p>
-                <Button variant="outline" onClick={handleExportData}>
+                <Button 
+                  variant="outline" 
+                  onClick={handleExportData}
+                  className="w-full sm:w-auto min-h-[44px]"
+                >
                   <Download className="h-4 w-4 mr-2" />
                   Export All Data
                 </Button>
@@ -435,7 +461,11 @@ const Settings = () => {
                 <p className="text-sm text-muted-foreground mb-3">
                   Permanently delete your account and all data
                 </p>
-                <Button variant="destructive" onClick={handleDeleteAccount}>
+                <Button 
+                  variant="destructive" 
+                  onClick={handleDeleteAccount}
+                  className="w-full sm:w-auto min-h-[44px]"
+                >
                   <Trash2 className="h-4 w-4 mr-2" />
                   Delete Account
                 </Button>

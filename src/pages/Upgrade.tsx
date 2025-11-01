@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,12 @@ import { toast } from "sonner";
 const Upgrade = () => {
   const navigate = useNavigate();
   const { limits, tierDisplayName } = useUserLimits();
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsVisible(true), 50);
+    return () => clearTimeout(timer);
+  }, []);
 
   const tiers = [
     {
@@ -120,12 +127,21 @@ const Upgrade = () => {
   const currentTier = limits?.tier || 'free';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-accent to-background">
+    <div className={`
+      min-h-screen bg-gradient-to-br from-background via-accent to-background
+      transition-all duration-700 ease-out
+      ${isVisible ? 'opacity-100' : 'opacity-0'}
+    `}>
       {/* Header */}
       <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => navigate("/dashboard")}
+              className="min-h-[44px] min-w-[44px] active:scale-95 transition-transform duration-150"
+            >
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex items-center gap-2">
@@ -164,13 +180,18 @@ const Upgrade = () => {
             return (
               <Card
                 key={tier.id}
-                className={`relative ${
-                  tier.popular
+                className={`
+                  relative 
+                  transition-all duration-300 hover:shadow-lg hover:scale-[1.02]
+                  animate-in fade-in slide-in-from-bottom-4
+                  ${tier.popular
                     ? 'ring-2 ring-primary shadow-lg scale-105'
                     : isCurrent
                     ? 'ring-2 ring-green-500'
                     : ''
-                }`}
+                  }
+                `}
+                style={{ animationDelay: `${index * 100}ms` }}
               >
                 {tier.popular && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2">

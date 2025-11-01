@@ -103,7 +103,13 @@ export const WarrantyCard = ({ warranty }: WarrantyCardProps) => {
   return (
     <Card 
       id={`warranty-${warranty.id}`}
-      className={`border-${color}/20 hover:shadow-lg transition-all duration-200 ${isUrgent ? 'ring-2 ring-warning/50 shadow-warning/20' : ''}`}
+      className={`
+        border-${color}/20 
+        transition-all duration-300 
+        hover:shadow-lg hover:scale-[1.01] hover:-translate-y-0.5
+        active:scale-[0.99]
+        ${isUrgent ? 'ring-2 ring-warning/50 shadow-warning/20' : ''}
+      `}
     >
       <CardHeader className="pb-3">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4">
@@ -205,7 +211,7 @@ export const WarrantyCard = ({ warranty }: WarrantyCardProps) => {
           <Button 
             variant="default" 
             size="sm" 
-            className="flex-1 justify-center bg-gradient-primary"
+            className="flex-1 justify-center bg-gradient-primary min-h-[44px] active:scale-95 transition-transform duration-150"
             onClick={() => navigate(`/warranty/${warranty.id}`)}
           >
             <Eye className="h-4 w-4 sm:mr-2" />
@@ -214,7 +220,7 @@ export const WarrantyCard = ({ warranty }: WarrantyCardProps) => {
           <Button 
             variant="outline" 
             size="sm" 
-            className="flex-1 justify-center"
+            className="flex-1 justify-center min-h-[44px] active:scale-95 transition-transform duration-150"
             onClick={() => navigate(`/support/${warranty.id}`)}
           >
             <Sparkles className="h-4 w-4 sm:mr-2" />
@@ -224,13 +230,22 @@ export const WarrantyCard = ({ warranty }: WarrantyCardProps) => {
         
         {/* Secondary Actions */}
         <div className="w-full flex gap-2">
-          <Button variant="outline" size="sm" className="flex-1 justify-center" onClick={() => setEditDialogOpen(true)}>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex-1 justify-center min-h-[44px] active:scale-95 transition-transform duration-150" 
+            onClick={() => setEditDialogOpen(true)}
+          >
             <Edit className="h-4 w-4 sm:mr-2" />
             <span className="hidden sm:inline">Edit</span>
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm" className="flex-1 justify-center">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex-1 justify-center min-h-[44px] active:scale-95 transition-transform duration-150"
+              >
                 <Trash2 className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Delete</span>
               </Button>

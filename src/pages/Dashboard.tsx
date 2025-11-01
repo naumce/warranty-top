@@ -28,6 +28,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isVisible, setIsVisible] = useState(false);
   const [shortcutsDialogOpen, setShortcutsDialogOpen] = useState(false);
   const [addWarrantyDialogOpen, setAddWarrantyDialogOpen] = useState(false);
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
@@ -124,6 +125,14 @@ const Dashboard = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  // Page load animation
+  useEffect(() => {
+    if (!loading) {
+      const timer = setTimeout(() => setIsVisible(true), 50);
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
+
   const handleSignOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -157,7 +166,11 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-accent to-background">
+    <div className={`
+      min-h-screen bg-gradient-to-br from-background via-accent to-background
+      transition-all duration-700 ease-out
+      ${isVisible ? 'opacity-100' : 'opacity-0'}
+    `}>
       {/* Header */}
       <header className="border-b bg-card/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4">
@@ -179,14 +192,14 @@ const Dashboard = () => {
                 variant="outline" 
                 size="icon" 
                 onClick={() => navigate("/settings")}
-                className="h-9 w-9 sm:h-10 sm:w-10"
+                className="min-h-[44px] min-w-[44px] active:scale-95 transition-transform duration-150"
               >
                 <SettingsIcon className="h-4 w-4" />
               </Button>
               <Button 
                 variant="outline" 
                 onClick={handleSignOut}
-                className="hidden sm:flex"
+                className="hidden sm:flex min-h-[44px] active:scale-95 transition-transform duration-150"
               >
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
@@ -195,7 +208,7 @@ const Dashboard = () => {
                 variant="outline" 
                 size="icon"
                 onClick={handleSignOut}
-                className="sm:hidden h-9 w-9"
+                className="sm:hidden min-h-[44px] min-w-[44px] active:scale-95 transition-transform duration-150"
               >
                 <LogOut className="h-4 w-4" />
               </Button>

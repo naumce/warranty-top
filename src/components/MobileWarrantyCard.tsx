@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Calendar, MapPin, DollarSign, ChevronRight, Edit, Trash2, Download, Navigation, Phone, Sparkles } from "lucide-react";
+import { AlertTriangle, Calendar, MapPin, DollarSign, ChevronRight, Edit, Trash2, Download, Navigation, Phone, Sparkles, Eye } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { generateWarrantyPDF } from "@/lib/pdf-generator";
@@ -156,7 +156,7 @@ export const MobileWarrantyCard = ({ warranty, index }: MobileWarrantyCardProps)
     >
       <Card
         className={cn(
-          "relative overflow-hidden cursor-pointer border-l-4 transition-all duration-300",
+          "relative overflow-hidden cursor-pointer border-l-4 transition-all duration-300 active:scale-[0.98]",
           isUrgent ? "border-l-warning shadow-lg shadow-warning/20" : "border-l-primary/30",
           isExpanded ? "shadow-xl" : "shadow-md hover:shadow-lg",
           `bg-gradient-to-br ${gradient}`
@@ -264,25 +264,42 @@ export const MobileWarrantyCard = ({ warranty, index }: MobileWarrantyCardProps)
 
                 {/* Action Buttons */}
                 <div className="space-y-2 pt-2">
-                  {/* AI Support Button - Prominent */}
-                  <Button
-                    size="sm"
-                    variant="default"
-                    className="w-full h-9 text-xs bg-gradient-primary font-semibold"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/support/${warranty.id}`);
-                    }}
-                  >
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    AI Support Hub
-                  </Button>
+                  {/* Preview & AI Support - Side by Side */}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="flex-1 min-h-[44px] text-xs bg-gradient-primary font-semibold active:scale-95 transition-transform duration-150"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/warranty/${warranty.id}`);
+                      }}
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      <span className="hidden xs:inline">Preview</span>
+                      <span className="xs:hidden">View</span>
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 min-h-[44px] text-xs active:scale-95 transition-transform duration-150"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/support/${warranty.id}`);
+                      }}
+                    >
+                      <Sparkles className="h-4 w-4 mr-1" />
+                      <span className="hidden xs:inline">AI Support</span>
+                      <span className="xs:hidden">AI</span>
+                    </Button>
+                  </div>
                   
                   <div className="flex gap-2">
                     <Button
                       size="sm"
                       variant="outline"
-                      className="flex-1 h-8 text-xs"
+                      className="flex-1 min-h-[44px] text-xs active:scale-95 transition-transform duration-150"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDownloadPDF();
@@ -294,7 +311,7 @@ export const MobileWarrantyCard = ({ warranty, index }: MobileWarrantyCardProps)
                     <Button
                       size="sm"
                       variant="outline"
-                      className="flex-1 h-8 text-xs"
+                      className="flex-1 min-h-[44px] text-xs active:scale-95 transition-transform duration-150"
                       onClick={(e) => {
                         e.stopPropagation();
                         setEditDialogOpen(true);
@@ -306,7 +323,7 @@ export const MobileWarrantyCard = ({ warranty, index }: MobileWarrantyCardProps)
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-8 px-2"
+                      className="min-h-[44px] px-2 active:scale-95 transition-transform duration-150"
                       onClick={(e) => {
                         e.stopPropagation();
                         setDeleteDialogOpen(true);

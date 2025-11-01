@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { 
   ArrowLeft, 
@@ -18,7 +19,8 @@ import {
   Camera,
   Upload,
   X,
-  Sparkles
+  Sparkles,
+  ChevronDown
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { uploadWarrantyImage, saveImageMetadata, deleteWarrantyImage } from "@/lib/storage";
@@ -66,7 +68,18 @@ export default function WarrantyDetail() {
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  
+  // Collapsible section states
+  const [openSections, setOpenSections] = useState({
+    warranty: true,
+    product: true,
+    purchase: false,
+    notes: false,
+    images: true,
+    metadata: false,
+  });
   
   // Editable form data
   const [formData, setFormData] = useState({
@@ -90,6 +103,14 @@ export default function WarrantyDetail() {
       fetchWarrantyDetails();
     }
   }, [id]);
+
+  // Page load animation
+  useEffect(() => {
+    if (!loading) {
+      const timer = setTimeout(() => setIsVisible(true), 50);
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
 
   const fetchWarrantyDetails = async () => {
     try {
@@ -335,9 +356,13 @@ export default function WarrantyDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className={`
+      min-h-screen bg-gradient-to-br from-background via-accent to-background
+      transition-all duration-700 ease-out
+      ${isVisible ? 'opacity-100' : 'opacity-0'}
+    `}>
       {/* Header */}
-      <div className="border-b bg-card">
+      <div className="border-b bg-card/80 backdrop-blur-md sticky top-0 z-10 shadow-sm">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
@@ -345,13 +370,17 @@ export default function WarrantyDetail() {
                 variant="ghost"
                 size="icon"
                 onClick={() => navigate("/dashboard")}
+                className="min-h-[44px] min-w-[44px] active:scale-95 transition-transform duration-150"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>
                 <h1 className="text-2xl font-bold">{formData.product_name || "Warranty Details"}</h1>
-                {formData.brand && (
+                {formData.brand && formData.model && (
                   <p className="text-muted-foreground">{formData.brand} {formData.model}</p>
+                )}
+                {formData.brand && !formData.model && !formData.product_name.toLowerCase().includes(formData.brand.toLowerCase()) && (
+                  <p className="text-muted-foreground">{formData.brand}</p>
                 )}
               </div>
             </div>
@@ -360,7 +389,7 @@ export default function WarrantyDetail() {
                 size="sm" 
                 variant="outline"
                 onClick={() => navigate(`/support/${id}`)}
-                className="hidden sm:flex"
+                className="hidden sm:flex min-h-[44px] active:scale-95 transition-transform duration-150"
               >
                 <Sparkles className="h-4 w-4 mr-2" />
                 AI Support
@@ -370,13 +399,18 @@ export default function WarrantyDetail() {
                   size="sm" 
                   onClick={handleSave}
                   disabled={saving}
-                  className="bg-gradient-primary"
+                  className="bg-gradient-primary min-h-[44px] active:scale-95 transition-transform duration-150 animate-in fade-in slide-in-from-top-2"
                 >
                   <Save className="h-4 w-4 mr-2" />
                   {saving ? "Saving..." : "Save Changes"}
                 </Button>
               )}
-              <Button variant="destructive" size="sm" onClick={handleDelete}>
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                onClick={handleDelete}
+                className="min-h-[44px] active:scale-95 transition-transform duration-150"
+              >
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete
               </Button>
@@ -391,11 +425,21 @@ export default function WarrantyDetail() {
           {/* Main Info */}
           <div className="lg:col-span-2 space-y-6">
             {/* Warranty Status Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Warranty Status</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <Collapsible 
+              open={openSections.warranty} 
+              onOpenChange={(open) => setOpenSections({...openSections, warranty: open})}
+            >
+              <Card className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '100ms' }}>
+                <CollapsibleTrigger className="w-full">
+                  <CardHeader className="cursor-pointer hover:bg-accent/50 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <CardTitle>Warranty Status</CardTitle>
+                      <ChevronDown className={`h-5 w-5 transition-transform duration-200 ${openSections.warranty ? '' : '-rotate-90'}`} />
+                    </div>
+                  </CardHeader>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <CardContent className="space-y-4">
                 <div className="grid gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="purchase_date">Purchase Date</Label>
@@ -408,7 +452,6 @@ export default function WarrantyDetail() {
                   </div>
                   
                   <div className="grid gap-2">
-                    <Label>Warranty Duration</Label>
                     <WarrantyDurationPicker
                       purchaseDate={formData.purchase_date}
                       warrantyEndDate={formData.warranty_end_date}
@@ -442,15 +485,27 @@ export default function WarrantyDetail() {
                     </div>
                   )}
                 </div>
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
 
             {/* Product Details */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Product Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <Collapsible 
+              open={openSections.product} 
+              onOpenChange={(open) => setOpenSections({...openSections, product: open})}
+            >
+              <Card className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '200ms' }}>
+                <CollapsibleTrigger className="w-full">
+                  <CardHeader className="cursor-pointer hover:bg-accent/50 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <CardTitle>Product Details</CardTitle>
+                      <ChevronDown className={`h-5 w-5 transition-transform duration-200 ${openSections.product ? '' : '-rotate-90'}`} />
+                    </div>
+                  </CardHeader>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <CardContent className="space-y-4">
                 <div className="grid gap-2">
                   <Label htmlFor="product_name">Product Name *</Label>
                   <Input
@@ -489,15 +544,27 @@ export default function WarrantyDetail() {
                     className="font-mono"
                   />
                 </div>
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
 
             {/* Purchase Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Purchase Information</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <Collapsible 
+              open={openSections.purchase} 
+              onOpenChange={(open) => setOpenSections({...openSections, purchase: open})}
+            >
+              <Card className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '300ms' }}>
+                <CollapsibleTrigger className="w-full">
+                  <CardHeader className="cursor-pointer hover:bg-accent/50 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <CardTitle>Purchase Information</CardTitle>
+                      <ChevronDown className={`h-5 w-5 transition-transform duration-200 ${openSections.purchase ? '' : '-rotate-90'}`} />
+                    </div>
+                  </CardHeader>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <CardContent className="space-y-4">
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="store_name">Store Name</Label>
@@ -557,43 +624,67 @@ export default function WarrantyDetail() {
                     className="font-mono"
                   />
                 </div>
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
 
             {/* Notes */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Notes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Textarea
-                  value={formData.notes}
-                  onChange={(e) => updateFormData('notes', e.target.value)}
-                  placeholder="Add any additional notes about this warranty..."
-                  rows={5}
-                />
-              </CardContent>
-            </Card>
+            <Collapsible 
+              open={openSections.notes} 
+              onOpenChange={(open) => setOpenSections({...openSections, notes: open})}
+            >
+              <Card className="animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: '400ms' }}>
+                <CollapsibleTrigger className="w-full">
+                  <CardHeader className="cursor-pointer hover:bg-accent/50 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <CardTitle>Notes</CardTitle>
+                      <ChevronDown className={`h-5 w-5 transition-transform duration-200 ${openSections.notes ? '' : '-rotate-90'}`} />
+                    </div>
+                  </CardHeader>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <CardContent>
+                    <Textarea
+                      value={formData.notes}
+                      onChange={(e) => updateFormData('notes', e.target.value)}
+                      placeholder="Add any additional notes about this warranty..."
+                      rows={5}
+                    />
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Images */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <ImageIcon className="h-5 w-5" />
-                    Photos ({images.length}/{userLimits?.max_photos_per_warranty || 2})
-                  </CardTitle>
-                  {images.length >= (userLimits?.max_photos_per_warranty || 2) && (
-                    <Badge variant="secondary" className="text-xs">
-                      Limit reached
-                    </Badge>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <Collapsible 
+              open={openSections.images} 
+              onOpenChange={(open) => setOpenSections({...openSections, images: open})}
+            >
+              <Card className="animate-in fade-in slide-in-from-right-4 duration-500" style={{ animationDelay: '100ms' }}>
+                <CollapsibleTrigger className="w-full">
+                  <CardHeader className="cursor-pointer hover:bg-accent/50 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <ImageIcon className="h-5 w-5" />
+                        <span className="text-lg font-semibold">Photos ({images.length}/{userLimits?.max_photos_per_warranty || 2})</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {images.length >= (userLimits?.max_photos_per_warranty || 2) && (
+                          <Badge variant="secondary" className="text-xs">
+                            Limit reached
+                          </Badge>
+                        )}
+                        <ChevronDown className={`h-5 w-5 transition-transform duration-200 ${openSections.images ? '' : '-rotate-90'}`} />
+                      </div>
+                    </div>
+                  </CardHeader>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <CardContent className="space-y-4">
                 {/* Upload buttons */}
                 <div className="flex gap-2">
                   <input
@@ -609,7 +700,7 @@ export default function WarrantyDetail() {
                     variant="outline"
                     size="sm"
                     onClick={() => photoInputRef.current?.click()}
-                    className="flex-1"
+                    className="flex-1 min-h-[44px] active:scale-95 transition-transform duration-150"
                   >
                     <Upload className="h-4 w-4 mr-2" />
                     Choose Photos
@@ -626,7 +717,7 @@ export default function WarrantyDetail() {
                         photoInputRef.current.click();
                       }
                     }}
-                    className="md:hidden"
+                    className="md:hidden min-h-[44px] min-w-[44px] active:scale-95 transition-transform duration-150"
                   >
                     <Camera className="h-4 w-4" />
                   </Button>
@@ -635,22 +726,26 @@ export default function WarrantyDetail() {
                 {/* Photo grid */}
                 {images.length > 0 ? (
                   <div className="grid grid-cols-2 gap-2">
-                    {images.map((image) => (
-                      <div key={image.id} className="relative group aspect-square rounded-lg overflow-hidden border">
+                    {images.map((image, index) => (
+                      <div 
+                        key={image.id} 
+                        className="relative group aspect-square rounded-lg overflow-hidden border hover:shadow-lg transition-all duration-300 animate-in fade-in zoom-in-95"
+                        style={{ animationDelay: `${index * 100}ms` }}
+                      >
                         <img
                           src={image.image_url}
                           alt={image.caption || image.storage_path}
-                          className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                          className="w-full h-full object-cover cursor-pointer hover:scale-110 transition-transform duration-300"
                           onClick={() => window.open(image.image_url, '_blank')}
                         />
                         {image.is_primary && (
-                          <Badge className="absolute top-2 left-2 text-xs">Primary</Badge>
+                          <Badge className="absolute top-2 left-2 text-xs bg-gradient-primary">Primary</Badge>
                         )}
                         <Button
                           type="button"
                           variant="destructive"
                           size="icon"
-                          className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-all duration-200 active:scale-90"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDeleteImage(image);
@@ -666,15 +761,27 @@ export default function WarrantyDetail() {
                     No photos attached yet. Click above to add photos.
                   </p>
                 )}
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
 
             {/* Metadata */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Metadata</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
+            <Collapsible 
+              open={openSections.metadata} 
+              onOpenChange={(open) => setOpenSections({...openSections, metadata: open})}
+            >
+              <Card className="animate-in fade-in slide-in-from-right-4 duration-500" style={{ animationDelay: '200ms' }}>
+                <CollapsibleTrigger className="w-full">
+                  <CardHeader className="cursor-pointer hover:bg-accent/50 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <CardTitle>Metadata</CardTitle>
+                      <ChevronDown className={`h-5 w-5 transition-transform duration-200 ${openSections.metadata ? '' : '-rotate-90'}`} />
+                    </div>
+                  </CardHeader>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <CardContent className="space-y-2 text-sm">
                 <div>
                   <p className="text-muted-foreground">Created</p>
                   <p className="font-medium">
@@ -686,8 +793,10 @@ export default function WarrantyDetail() {
                   <p className="text-muted-foreground">Warranty ID</p>
                   <p className="font-mono text-xs break-all">{warranty.id}</p>
                 </div>
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
           </div>
         </div>
       </div>
