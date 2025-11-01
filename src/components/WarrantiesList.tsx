@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Search, Package, Download, Trash2, SortAsc, X } from "lucide-react";
+import { Search, Package, Download, Trash2, SortAsc, X, CheckSquare } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import { differenceInDays, format } from "date-fns";
 import { toast } from "sonner";
@@ -22,6 +22,7 @@ export const WarrantiesList = ({ initialStatusFilter = "all" }: WarrantiesListPr
   const [sortBy, setSortBy] = useState<string>("expiry_asc");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [selectMode, setSelectMode] = useState(false); // Toggle for bulk operations
 
   // Update filter when prop changes
   useEffect(() => {
@@ -279,6 +280,70 @@ export const WarrantiesList = ({ initialStatusFilter = "all" }: WarrantiesListPr
           </div>
         )}
 
+        {/* Bulk Actions Bar */}
+        <div className="flex items-center justify-between gap-3 pt-2 border-t">
+          <div className="flex items-center gap-2">
+            <Button
+              variant={selectMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                setSelectMode(!selectMode);
+                if (selectMode) setSelectedIds([]); // Clear selection when exiting
+              }}
+            >
+              <CheckSquare className="h-4 w-4 mr-2" />
+              {selectMode ? "Cancel" : "Select"}
+            </Button>
+            
+            {selectMode && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={selectAll}
+                >
+                  {selectedIds.length === filteredWarranties.length ? "Deselect All" : "Select All"}
+                </Button>
+                
+                {selectedIds.length > 0 && (
+                  <>
+                    <Badge variant="secondary">
+                      {selectedIds.length} selected
+                    </Badge>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleExportCSV}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Export
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleBulkDelete}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </Button>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+          
+          {!selectMode && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCSV}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export All
+            </Button>
+          )}
+        </div>
+
       </div>
 
       {/* Warranties Grid - IMMEDIATELY VISIBLE ON MOBILE */}
@@ -305,17 +370,19 @@ export const WarrantiesList = ({ initialStatusFilter = "all" }: WarrantiesListPr
             ))}
           </div>
 
-          {/* Desktop: Full cards with checkboxes */}
+          {/* Desktop: Full cards with optional checkboxes */}
           <div className="hidden sm:block space-y-4">
             {filteredWarranties.map((warranty) => (
               <div key={warranty.id} className="flex items-start gap-3">
-                <div className="pt-6 shrink-0">
-                  <Checkbox
-                    checked={selectedIds.includes(warranty.id)}
-                    onCheckedChange={() => toggleSelection(warranty.id)}
-                    className="h-5 w-5"
-                  />
-                </div>
+                {selectMode && (
+                  <div className="pt-6 shrink-0">
+                    <Checkbox
+                      checked={selectedIds.includes(warranty.id)}
+                      onCheckedChange={() => toggleSelection(warranty.id)}
+                      className="h-5 w-5"
+                    />
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <WarrantyCard warranty={warranty} />
                 </div>

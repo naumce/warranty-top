@@ -118,8 +118,18 @@ If you cannot read something, omit that field. Be as accurate as possible.`
 
     console.log("🤖 OCR raw response:", content);
 
+    // Clean up response - remove markdown code blocks if present
+    let cleanedContent = content.trim();
+    
+    // Remove ```json and ``` markers
+    if (cleanedContent.startsWith('```json')) {
+      cleanedContent = cleanedContent.replace(/^```json\s*\n/, '').replace(/\n```\s*$/, '');
+    } else if (cleanedContent.startsWith('```')) {
+      cleanedContent = cleanedContent.replace(/^```\s*\n/, '').replace(/\n```\s*$/, '');
+    }
+
     // Parse JSON response
-    const receiptData = JSON.parse(content);
+    const receiptData = JSON.parse(cleanedContent);
 
     console.log("✅ Receipt data extracted:", receiptData);
     return receiptData;

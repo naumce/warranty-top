@@ -304,12 +304,14 @@ const Dashboard = () => {
           </Card>
         </div>
 
-          {/* Sidebar Widgets - Hidden on mobile */}
-          <div className="hidden lg:block space-y-4 sm:space-y-6">
+          {/* Sidebar Widgets */}
+          <div className="space-y-4 sm:space-y-6">
             <UsageWidget />
-            <WarrantyTimeline />
-            <ClaimTracker />
-            <RecentActivity />
+            <div className="hidden lg:block space-y-4 sm:space-y-6">
+              <WarrantyTimeline />
+              <ClaimTracker />
+              <RecentActivity />
+            </div>
           </div>
         </div>
 

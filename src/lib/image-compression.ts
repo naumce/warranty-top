@@ -172,7 +172,7 @@ export async function compressImages(
  */
 export function shouldCompress(file: File, maxSizeKB: number = 500): boolean {
   const fileSizeKB = file.size / 1024;
-  const isImage = file.type.startsWith('image/');
+  const isImage = file.type && file.type.startsWith('image/');
   
   return isImage && fileSizeKB > maxSizeKB;
 }

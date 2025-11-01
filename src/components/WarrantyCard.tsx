@@ -1,11 +1,12 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Calendar, DollarSign, MapPin, Trash2, Edit, AlertCircle, Download, Phone, AlertTriangle, FileText } from "lucide-react";
+import { Calendar, DollarSign, MapPin, Trash2, Edit, AlertCircle, Download, Phone, AlertTriangle, FileText, Eye, Sparkles } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { generateWarrantyPDF } from "@/lib/pdf-generator";
@@ -33,6 +34,7 @@ interface WarrantyCardProps {
 }
 
 export const WarrantyCard = ({ warranty }: WarrantyCardProps) => {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [deleting, setDeleting] = useState(false);
   const [claimWizardOpen, setClaimWizardOpen] = useState(false);
@@ -198,7 +200,29 @@ export const WarrantyCard = ({ warranty }: WarrantyCardProps) => {
           </div>
         )}
         
-        {/* Regular Actions */}
+        {/* Primary Actions */}
+        <div className="w-full flex gap-2">
+          <Button 
+            variant="default" 
+            size="sm" 
+            className="flex-1 justify-center bg-gradient-primary"
+            onClick={() => navigate(`/warranty/${warranty.id}`)}
+          >
+            <Eye className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Preview</span>
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex-1 justify-center"
+            onClick={() => navigate(`/support/${warranty.id}`)}
+          >
+            <Sparkles className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">AI Support</span>
+          </Button>
+        </div>
+        
+        {/* Secondary Actions */}
         <div className="w-full flex gap-2">
           <Button variant="outline" size="sm" className="flex-1 justify-center" onClick={() => setEditDialogOpen(true)}>
             <Edit className="h-4 w-4 sm:mr-2" />

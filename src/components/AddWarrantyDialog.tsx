@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -17,14 +18,16 @@ import { WarrantyDurationPicker } from "./WarrantyDurationPicker";
 import { useUserLimits } from "@/hooks/useUserLimits";
 import { UpgradePrompt } from "./UpgradePrompt";
 import { uploadWarrantyImage, saveImageMetadata } from "@/lib/storage";
+import { ItemPicker } from "./ItemPicker";
 
 export const AddWarrantyDialog = () => {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { canAddWarranty, canUseAILookup, canUseOCR, incrementOCRUsage } = useUserLimits();
   
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<'scan' | 'manual'>('scan');
+  const [view, setView] = useState<'scan' | 'manual' | 'item-picker'>('scan');
   const [scannerActive, setScannerActive] = useState(false);
   const [receiptImage, setReceiptImage] = useState<File | null>(null);
   const [scannedBarcode, setScannedBarcode] = useState<string>("");
@@ -60,36 +63,87 @@ export const AddWarrantyDialog = () => {
   const handleReceiptCapture = (file: File, ocrData?: ReceiptData) => {
     setReceiptImage(file);
     setReceiptOCRData(ocrData || null);
-    setView('manual');
 
     if (ocrData) {
       // Increment OCR usage count (for tier tracking)
       incrementOCRUsage();
       
-      // Auto-fill form with OCR data
+      // If multiple items found, show item picker
+      if (ocrData.items && ocrData.items.length > 1) {
+        setView('item-picker');
+        toast.success(`📋 Found ${ocrData.items.length} items on receipt!`, {
+          description: "Select which item you want to add",
+        });
+        return;
+      }
+      
+      // Single item or no items - auto-fill form
+      setView('manual');
       setFormData(prev => ({
         ...prev,
+        product_name: ocrData.items?.[0]?.name || prev.product_name,
         store_name: ocrData.storeName || prev.store_name,
         store_address: ocrData.storeAddress || prev.store_address,
         store_city: ocrData.storeCity || prev.store_city,
         store_phone: ocrData.storePhone || prev.store_phone,
         receipt_number: ocrData.receiptNumber || prev.receipt_number,
         purchase_date: ocrData.purchaseDate || prev.purchase_date,
-        purchase_price: ocrData.total?.toString() || prev.purchase_price,
-        notes: ocrData.items && ocrData.items.length > 0
-          ? `Items from receipt:\n${ocrData.items.map(item => `- ${item.name} ${item.price ? `($${item.price})` : ''}`).join('\n')}`
-          : prev.notes,
+        purchase_price: ocrData.items?.[0]?.price?.toString() || ocrData.total?.toString() || prev.purchase_price,
       }));
 
       toast.success(`🎉 Auto-filled from receipt!`, {
         description: `${ocrData.storeName || 'Store'} - ${ocrData.purchaseDate || 'Date'}`,
       });
+    } else {
+      setView('manual');
     }
+  };
+
+  const handleItemSelect = (item: { name: string; price?: number }, receiptData: ReceiptData) => {
+    setView('manual');
+    setFormData(prev => ({
+      ...prev,
+      product_name: item.name,
+      purchase_price: item.price?.toString() || prev.purchase_price,
+      store_name: receiptData.storeName || prev.store_name,
+      store_address: receiptData.storeAddress || prev.store_address,
+      store_city: receiptData.storeCity || prev.store_city,
+      store_phone: receiptData.storePhone || prev.store_phone,
+      receipt_number: receiptData.receiptNumber || prev.receipt_number,
+      purchase_date: receiptData.purchaseDate || prev.purchase_date,
+    }));
+
+    toast.success(`✅ Selected: ${item.name}`, {
+      description: "Form auto-filled with item details",
+    });
   };
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
+
+    // Check photo limit
+    const { allowed, reason, currentTier, maxPhotos } = canAddWarranty();
+    const photoLimit = maxPhotos || 2;
+    const currentPhotoCount = attachedPhotos.length;
+    const availableSlots = photoLimit - currentPhotoCount;
+
+    if (availableSlots <= 0) {
+      toast.error(`Photo limit reached (${photoLimit} photos per warranty)`, {
+        description: "Upgrade to add more photos",
+      });
+      setShowUpgradePrompt(true);
+      setUpgradeReason(`You've reached your photo limit. Upgrade to add more photos per warranty.`);
+      setUpgradeTier(currentTier || 'free');
+      return;
+    }
+
+    if (files.length > availableSlots) {
+      toast.error(`Can only add ${availableSlots} more photo(s)`, {
+        description: `Your ${currentTier?.toUpperCase() || 'FREE'} plan allows ${photoLimit} photos per warranty`,
+      });
+      return;
+    }
 
     // Check file sizes
     const oversized = files.filter(f => f.size > 10 * 1024 * 1024);
@@ -127,11 +181,7 @@ export const AddWarrantyDialog = () => {
             label: "View",
             onClick: () => {
               setOpen(false);
-              // Scroll to warranty card (if visible on dashboard)
-              setTimeout(() => {
-                const card = document.getElementById(`warranty-${existingWarranty.id}`);
-                card?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              }, 300);
+              navigate(`/warranty/${existingWarranty.id}`);
             }
           }
         });
@@ -285,17 +335,22 @@ export const AddWarrantyDialog = () => {
       if (attachedPhotos.length > 0 && warranty) {
         toast.info(`Uploading ${attachedPhotos.length} photo(s)...`);
         
-        for (const photo of attachedPhotos) {
+        for (let i = 0; i < attachedPhotos.length; i++) {
+          const photo = attachedPhotos[i];
           try {
-            const publicUrl = await uploadWarrantyImage(user.id, warranty.id, photo);
-            await saveImageMetadata({
-              warranty_id: warranty.id,
-              file_url: publicUrl,
-              file_name: photo.name,
-              file_size: photo.size,
-              mime_type: photo.type,
-              image_type: 'product', // Default type
-            });
+            const result = await uploadWarrantyImage(photo, warranty.id, 'product');
+            if (result) {
+              await saveImageMetadata(
+                warranty.id,
+                result.url,
+                result.path,
+                'product',
+                undefined, // caption
+                i === 0, // first photo is primary
+                photo.size,
+                photo.type
+              );
+            }
           } catch (uploadError) {
             console.error("Error uploading photo:", uploadError);
             // Continue with other photos even if one fails
@@ -386,6 +441,14 @@ export const AddWarrantyDialog = () => {
             onCancel={() => setOpen(false)}
             onScannerStateChange={setScannerActive}
           />
+        ) : view === 'item-picker' && receiptOCRData ? (
+          <div className="p-6">
+            <ItemPicker
+              receiptData={receiptOCRData}
+              onItemSelect={handleItemSelect}
+              onSkip={() => setView('manual')}
+            />
+          </div>
         ) : (
           <>
             <DialogHeader className="p-6 pb-0">
@@ -542,7 +605,12 @@ export const AddWarrantyDialog = () => {
 
                 {/* Photo Attachment Section */}
                 <div className="grid gap-3 pt-2 border-t">
-                  <Label>Attach Photos (Optional)</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Attach Photos (Optional)</Label>
+                    <span className="text-xs text-muted-foreground">
+                      {attachedPhotos.length}/{canAddWarranty().maxPhotos || 2}
+                    </span>
+                  </div>
                   <p className="text-sm text-muted-foreground">
                     Add photos of the product, warranty card, receipt, or packaging
                   </p>

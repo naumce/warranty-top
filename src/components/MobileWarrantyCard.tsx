@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Calendar, MapPin, DollarSign, ChevronRight, Edit, Trash2, Download, Navigation, Phone } from "lucide-react";
+import { AlertTriangle, Calendar, MapPin, DollarSign, ChevronRight, Edit, Trash2, Download, Navigation, Phone, Sparkles } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { generateWarrantyPDF } from "@/lib/pdf-generator";
@@ -43,6 +44,7 @@ interface MobileWarrantyCardProps {
 }
 
 export const MobileWarrantyCard = ({ warranty, index }: MobileWarrantyCardProps) => {
+  const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [swipeHint, setSwipeHint] = useState(true);
@@ -262,6 +264,20 @@ export const MobileWarrantyCard = ({ warranty, index }: MobileWarrantyCardProps)
 
                 {/* Action Buttons */}
                 <div className="space-y-2 pt-2">
+                  {/* AI Support Button - Prominent */}
+                  <Button
+                    size="sm"
+                    variant="default"
+                    className="w-full h-9 text-xs bg-gradient-primary font-semibold"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/support/${warranty.id}`);
+                    }}
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    AI Support Hub
+                  </Button>
+                  
                   <div className="flex gap-2">
                     <Button
                       size="sm"
@@ -304,8 +320,8 @@ export const MobileWarrantyCard = ({ warranty, index }: MobileWarrantyCardProps)
                   {warranty.store_name && (
                     <Button
                       size="sm"
-                      variant="default"
-                      className="w-full h-8 text-xs bg-primary"
+                      variant="outline"
+                      className="w-full h-8 text-xs"
                       onClick={handleFindStores}
                     >
                       <Navigation className="h-3 w-3 mr-1" />

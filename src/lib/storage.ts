@@ -21,7 +21,7 @@ export async function uploadWarrantyImage(
 ): Promise<{ url: string; path: string; compressionResult?: CompressionResult } | null> {
   try {
     // 🔥 AUTO-COMPRESS IMAGE BEFORE UPLOAD
-    console.log(`📦 Original size: ${formatFileSizeCompression(file.size)}`);
+    console.log(`📦 Original size: ${formatFileSizeCompression(file.size)} (${file.type || 'unknown type'})`);
     const compressionResult = await smartCompress(file);
     const fileToUpload = compressionResult.file;
     

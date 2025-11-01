@@ -11,10 +11,12 @@ export interface UserLimits {
   max_documents_per_warranty: number;
   max_ocr_scans_per_month: number;
   max_ai_lookups_per_month: number;
+  max_ai_support_requests_per_month: number;
   current_warranties: number;
   current_storage_mb: number;
   ocr_scans_used: number;
   ai_lookups_used: number;
+  ai_support_requests_used: number;
   warning_count: number;
   blocked_until: string | null;
 }
@@ -48,14 +50,15 @@ export const useUserLimits = () => {
 
   // Check if user can add warranty
   const canAddWarranty = () => {
-    if (!limits) return { allowed: false, reason: "Loading limits..." };
+    if (!limits) return { allowed: false, reason: "Loading limits...", maxPhotos: 2 };
     
     // Check if blocked
     if (limits.subscription_status === 'blocked') {
       if (limits.blocked_until && new Date(limits.blocked_until) > new Date()) {
         return { 
           allowed: false, 
-          reason: "Account temporarily blocked. Please contact support." 
+          reason: "Account temporarily blocked. Please contact support.",
+          maxPhotos: limits.max_photos_per_warranty
         };
       }
     }
@@ -65,40 +68,26 @@ export const useUserLimits = () => {
       return { 
         allowed: false, 
         reason: `You've reached your limit of ${limits.max_warranties} warranties. Upgrade to add more!`,
-        currentTier: limits.tier 
+        currentTier: limits.tier,
+        maxPhotos: limits.max_photos_per_warranty
       };
     }
     
-    return { allowed: true, reason: "" };
+    return { 
+      allowed: true, 
+      reason: "", 
+      currentTier: limits.tier,
+      maxPhotos: limits.max_photos_per_warranty
+    };
   };
 
   // Check if user can use OCR
   const canUseOCR = () => {
     if (!limits) return { allowed: false, reason: "Loading limits..." };
     
-    // FREE users can't use OCR
-    if (limits.tier === 'free') {
-      return {
-        allowed: false,
-        reason: "AI Receipt Scanning is a premium feature. Upgrade to unlock!",
-        currentTier: 'free'
-      };
-    }
-    
-    // ULTIMATE has unlimited
-    if (limits.tier === 'ultimate') {
-      return { allowed: true, reason: "" };
-    }
-    
-    // Check monthly limit
-    if (limits.ocr_scans_used >= limits.max_ocr_scans_per_month) {
-      return {
-        allowed: false,
-        reason: `You've used all ${limits.max_ocr_scans_per_month} OCR scans this month. Upgrade to PRO or wait until next month!`,
-        currentTier: limits.tier
-      };
-    }
-    
+    // ✅ OCR is now FREE for everyone! Only limit warranties.
+    // This creates a "wow moment" and encourages upgrades.
+    // Users can scan receipts unlimited, but can only save limited warranties.
     return { allowed: true, reason: "" };
   };
 
@@ -174,6 +163,79 @@ export const useUserLimits = () => {
     }
   });
 
+  // Check if user can use AI Support
+  const canUseAISupport = () => {
+    if (!limits) return { allowed: false, reason: "Loading limits..." };
+    
+    // Check if blocked
+    if (limits.subscription_status === 'blocked') {
+      if (limits.blocked_until && new Date(limits.blocked_until) > new Date()) {
+        return { 
+          allowed: false, 
+          reason: "Account temporarily blocked. Please contact support.",
+          currentTier: limits.tier
+        };
+      }
+    }
+    
+    // ULTIMATE has unlimited
+    if (limits.tier === 'ultimate') {
+      return { allowed: true, reason: "" };
+    }
+    
+    // Check monthly limit
+    if (limits.ai_support_requests_used >= limits.max_ai_support_requests_per_month) {
+      return {
+        allowed: false,
+        reason: `You've used all ${limits.max_ai_support_requests_per_month} AI Support requests this month. Upgrade for more!`,
+        currentTier: limits.tier,
+        used: limits.ai_support_requests_used,
+        max: limits.max_ai_support_requests_per_month
+      };
+    }
+    
+    return { 
+      allowed: true, 
+      reason: "",
+      used: limits.ai_support_requests_used,
+      max: limits.max_ai_support_requests_per_month
+    };
+  };
+
+  // Increment AI Support usage
+  const incrementAISupport = useMutation({
+    mutationFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { error } = await supabase.rpc('increment_ai_support_usage', {
+        p_user_id: user.id
+      });
+
+      if (error) {
+        console.error("❌ AI Support tracking error:", error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user_limits"] });
+    },
+    onError: (error: any) => {
+      console.error("Failed to increment AI Support usage:", error);
+      
+      // Show specific error for missing function
+      if (error.message?.includes('function') || error.code === '42883') {
+        toast.error("Database configuration error", {
+          description: "Please run the AI Support migration. Contact support if this persists."
+        });
+      } else {
+        toast.error("Failed to track AI Support usage", {
+          description: error.message || "Unknown error"
+        });
+      }
+    }
+  });
+
   // Helper: Get usage percentage
   const getWarrantyUsagePercent = () => {
     if (!limits) return 0;
@@ -229,10 +291,12 @@ export const useUserLimits = () => {
     canAddWarranty,
     canUseOCR,
     canUseAILookup,
+    canUseAISupport,
     
     // Mutation functions
     incrementOCRUsage: incrementOCRUsage.mutate,
     incrementAILookup: incrementAILookup.mutate,
+    incrementAISupport: incrementAISupport.mutate,
     
     // Formatted data
     tierName: limits?.tier || 'free',
@@ -255,6 +319,9 @@ export const useUserLimits = () => {
     isApproachingWarrantyLimit: isApproachingWarrantyLimit(),
     isApproachingStorageLimit: isApproachingStorageLimit(),
     isApproachingOCRLimit: isApproachingOCRLimit(),
+    
+    // User limits (for direct access)
+    userLimits: limits,
   };
 };
 

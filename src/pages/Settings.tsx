@@ -7,13 +7,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Shield, User, Bell, Database, Download, Trash2, ArrowLeft, LogOut } from "lucide-react";
+import { Shield, User, Bell, Database, Download, Trash2, ArrowLeft, LogOut, Crown, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 import { getNotificationPreferences, saveNotificationPreferences } from "@/lib/notifications";
+import { useUserLimits } from "@/hooks/useUserLimits";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 
 const Settings = () => {
   const navigate = useNavigate();
+  const { limits, tierDisplayName, warrantyUsage, storageUsage, ocrUsage, warrantyUsagePercent, storageUsagePercent } = useUserLimits();
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -169,6 +173,94 @@ const Settings = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="space-y-6">
+          {/* Subscription & Billing */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Crown className="h-5 w-5" />
+                  Subscription & Billing
+                </CardTitle>
+                <Badge 
+                  className={`${
+                    limits?.tier === 'ultimate' ? 'bg-gradient-to-r from-purple-600 to-pink-600' :
+                    limits?.tier === 'pro' ? 'bg-gradient-to-r from-blue-600 to-cyan-600' :
+                    limits?.tier === 'basic' ? 'bg-gradient-to-r from-green-600 to-emerald-600' :
+                    'bg-gradient-to-r from-gray-600 to-gray-700'
+                  } text-white border-none`}
+                >
+                  {limits?.tier === 'ultimate' || limits?.tier === 'pro' ? (
+                    <Crown className="h-3 w-3 mr-1" />
+                  ) : null}
+                  {tierDisplayName}
+                </Badge>
+              </div>
+              <CardDescription>
+                Manage your subscription and view usage limits
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Current Plan */}
+              <div>
+                <h3 className="font-medium mb-4">Current Plan</h3>
+                <div className="grid gap-4">
+                  {/* Warranties */}
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-muted-foreground">Warranties</span>
+                      <span className="font-medium">{warrantyUsage}</span>
+                    </div>
+                    <Progress value={warrantyUsagePercent} className="h-2" />
+                  </div>
+
+                  {/* Storage */}
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-muted-foreground">Storage</span>
+                      <span className="font-medium">{storageUsage}</span>
+                    </div>
+                    <Progress value={storageUsagePercent} className="h-2" />
+                  </div>
+
+                  {/* OCR Scans */}
+                  <div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-muted-foreground">OCR Scans (Monthly)</span>
+                      <span className="font-medium">{ocrUsage}</span>
+                    </div>
+                  </div>
+
+                  {/* Photos per warranty */}
+                  <div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Photos per warranty</span>
+                      <span className="font-medium">{limits?.max_photos_per_warranty || 2}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Upgrade Button */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Want more features?</p>
+                  <p className="text-sm text-muted-foreground">
+                    Upgrade to unlock unlimited warranties, more storage, and AI features
+                  </p>
+                </div>
+                <Button 
+                  onClick={() => navigate("/upgrade")}
+                  className="bg-gradient-primary"
+                >
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  Upgrade
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Profile Settings */}
           <Card>
             <CardHeader>
