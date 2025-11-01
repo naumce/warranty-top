@@ -20,7 +20,11 @@ import {
   Upload,
   X,
   Sparkles,
-  ChevronDown
+  ChevronDown,
+  Phone,
+  Mail,
+  Search,
+  Download
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { uploadWarrantyImage, saveImageMetadata, deleteWarrantyImage } from "@/lib/storage";
@@ -361,35 +365,40 @@ export default function WarrantyDetail() {
       transition-all duration-700 ease-out
       ${isVisible ? 'opacity-100' : 'opacity-0'}
     `}>
-      {/* Header */}
+      {/* Header - Compact Mobile Design */}
       <div className="border-b bg-card/80 backdrop-blur-md sticky top-0 z-10 shadow-sm">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate("/dashboard")}
-                className="min-h-[44px] min-w-[44px] active:scale-95 transition-transform duration-150"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold">{formData.product_name || "Warranty Details"}</h1>
-                {formData.brand && formData.model && (
-                  <p className="text-muted-foreground">{formData.brand} {formData.model}</p>
-                )}
-                {formData.brand && !formData.model && !formData.product_name.toLowerCase().includes(formData.brand.toLowerCase()) && (
-                  <p className="text-muted-foreground">{formData.brand}</p>
-                )}
-              </div>
+        <div className="container mx-auto px-3 py-2 sm:px-4 sm:py-4">
+          {/* Top Row: Back + Title + Action Menu */}
+          <div className="flex items-center gap-2 sm:gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/dashboard")}
+              className="h-10 w-10 sm:h-11 sm:w-11 shrink-0 active:scale-95 transition-transform duration-150"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            
+            {/* Title - Compact on mobile */}
+            <div className="flex-1 min-w-0">
+              <h1 className="text-base sm:text-2xl font-bold truncate leading-tight">
+                {formData.product_name || "Warranty Details"}
+              </h1>
+              {(formData.brand || formData.model) && (
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                  {formData.brand && formData.model && `${formData.brand} ${formData.model}`}
+                  {formData.brand && !formData.model && !formData.product_name.toLowerCase().includes(formData.brand.toLowerCase()) && formData.brand}
+                </p>
+              )}
             </div>
-            <div className="flex gap-2">
+
+            {/* Desktop Actions */}
+            <div className="hidden sm:flex gap-2">
               <Button 
                 size="sm" 
                 variant="outline"
                 onClick={() => navigate(`/support/${id}`)}
-                className="hidden sm:flex min-h-[44px] active:scale-95 transition-transform duration-150"
+                className="min-h-[44px] active:scale-95 transition-transform duration-150"
               >
                 <Sparkles className="h-4 w-4 mr-2" />
                 AI Support
@@ -413,6 +422,36 @@ export default function WarrantyDetail() {
               >
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete
+              </Button>
+            </div>
+
+            {/* Mobile: Icon-only Actions */}
+            <div className="flex sm:hidden gap-1 shrink-0">
+              {hasChanges && (
+                <Button 
+                  size="icon"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="h-10 w-10 bg-gradient-primary active:scale-95 transition-transform duration-150 animate-in fade-in slide-in-from-top-2"
+                >
+                  <Save className="h-4 w-4" />
+                </Button>
+              )}
+              <Button 
+                size="icon"
+                variant="outline"
+                onClick={() => navigate(`/support/${id}`)}
+                className="h-10 w-10 active:scale-95 transition-transform duration-150"
+              >
+                <Sparkles className="h-4 w-4" />
+              </Button>
+              <Button 
+                variant="destructive" 
+                size="icon"
+                onClick={handleDelete}
+                className="h-10 w-10 active:scale-95 transition-transform duration-150"
+              >
+                <Trash2 className="h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -482,6 +521,72 @@ export default function WarrantyDetail() {
                           </span>
                         </div>
                       )}
+                    </div>
+                  )}
+
+                  {/* Quick Actions - Mobile First */}
+                  {!isExpired && (
+                    <div className="space-y-3 pt-4 border-t">
+                      <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                        Quick Actions
+                      </h4>
+                      
+                      {/* AI Support - Hero Action */}
+                      <Button
+                        onClick={() => navigate(`/support/${id}`)}
+                        className="w-full bg-gradient-primary hover:opacity-90 min-h-[48px] text-base font-semibold active:scale-[0.98] transition-all duration-150"
+                      >
+                        <Sparkles className="h-5 w-5 mr-2" />
+                        Get AI Help Now
+                      </Button>
+
+                      {/* Secondary Actions Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {warranty.store_phone && (
+                          <Button
+                            variant="outline"
+                            onClick={() => window.open(`tel:${warranty.store_phone}`)}
+                            className="min-h-[44px] justify-start active:scale-[0.98] transition-all duration-150"
+                          >
+                            <Phone className="h-4 w-4 mr-2" />
+                            Call Support
+                          </Button>
+                        )}
+                        
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            const subject = encodeURIComponent(`Support for ${warranty.product_name}`);
+                            const body = encodeURIComponent(`Product: ${warranty.product_name}\nSerial: ${warranty.serial_number || 'N/A'}\nPurchase Date: ${warranty.purchase_date}\n\nIssue: `);
+                            window.open(`mailto:${warranty.store_email || 'support@example.com'}?subject=${subject}&body=${body}`);
+                          }}
+                          className="min-h-[44px] justify-start active:scale-[0.98] transition-all duration-150"
+                        >
+                          <Mail className="h-4 w-4 mr-2" />
+                          Email Support
+                        </Button>
+
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            const searchQuery = `${warranty.brand || ''} ${warranty.product_name} support`;
+                            window.open(`https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`, '_blank');
+                          }}
+                          className="min-h-[44px] justify-start active:scale-[0.98] transition-all duration-150"
+                        >
+                          <Search className="h-4 w-4 mr-2" />
+                          Search Online
+                        </Button>
+
+                        <Button
+                          variant="outline"
+                          onClick={() => window.print()}
+                          className="min-h-[44px] justify-start active:scale-[0.98] transition-all duration-150"
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Download PDF
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>

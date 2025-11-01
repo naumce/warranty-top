@@ -499,37 +499,39 @@ export default function AISupport() {
       transition-all duration-700 ease-out
       ${isVisible ? 'opacity-100' : 'opacity-0'}
     `}>
-      {/* Header */}
-      <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => navigate(`/warranty/${id}`)}
-                className="min-h-[44px] min-w-[44px] active:scale-95 transition-transform duration-150"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div>
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-6 w-6 text-primary" />
-                  <h1 className="text-2xl font-bold">AI Support Hub</h1>
-                </div>
-                <p className="text-sm text-muted-foreground">{warranty.product_name}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {limits && (
-                <Badge variant="outline" className="hidden sm:flex">
-                  {limits.ai_support_requests_used}/{limits.max_ai_support_requests_per_month === 999999 ? '∞' : limits.max_ai_support_requests_per_month} requests
+      {/* Header - Compact Mobile Design */}
+      <header className="border-b bg-card/80 backdrop-blur-md sticky top-0 z-10 shadow-sm">
+        <div className="container mx-auto px-3 py-2 sm:px-4 sm:py-3">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => navigate(`/warranty/${id}`)}
+              className="h-10 w-10 sm:h-11 sm:w-11 shrink-0 active:scale-95 transition-transform duration-150"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            
+            {/* Title - Compact on mobile */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
+                <h1 className="text-sm sm:text-xl font-bold truncate">AI Support</h1>
+                <Badge className="bg-gradient-primary text-white text-[10px] sm:text-xs px-1.5 sm:px-2 py-0 sm:py-0.5 h-5 sm:h-auto">
+                  {tierDisplayName}
                 </Badge>
-              )}
-              <Badge className="bg-gradient-primary text-white">
-                {tierDisplayName}
-              </Badge>
+              </div>
+              <p className="text-[11px] sm:text-sm text-muted-foreground truncate leading-tight">
+                {warranty.product_name}
+              </p>
             </div>
+
+            {/* Usage indicator - Desktop only */}
+            {limits && (
+              <Badge variant="outline" className="hidden md:flex text-xs shrink-0">
+                {limits.ai_support_requests_used}/{limits.max_ai_support_requests_per_month === 999999 ? '∞' : limits.max_ai_support_requests_per_month}
+              </Badge>
+            )}
           </div>
         </div>
       </header>
@@ -572,23 +574,35 @@ export default function AISupport() {
           </CardContent>
         </Card>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4">
-            <TabsTrigger value="locator" className="flex items-center gap-2">
-              <MapPin className="h-4 w-4" />
-              <span className="hidden sm:inline">Store Locator</span>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 h-auto p-1 gap-1">
+            <TabsTrigger 
+              value="locator" 
+              className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 min-h-[56px] sm:min-h-[44px] px-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <MapPin className="h-5 w-5 sm:h-4 sm:w-4 shrink-0" />
+              <span className="text-[10px] sm:text-sm font-medium leading-tight text-center">Store Locator</span>
             </TabsTrigger>
-            <TabsTrigger value="claim" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">Claim Letter</span>
+            <TabsTrigger 
+              value="claim" 
+              className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 min-h-[56px] sm:min-h-[44px] px-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <FileText className="h-5 w-5 sm:h-4 sm:w-4 shrink-0" />
+              <span className="text-[10px] sm:text-sm font-medium leading-tight text-center">Claim Letter</span>
             </TabsTrigger>
-            <TabsTrigger value="legal" className="flex items-center gap-2">
-              <Scale className="h-4 w-4" />
-              <span className="hidden sm:inline">Legal Advisor</span>
+            <TabsTrigger 
+              value="legal" 
+              className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 min-h-[56px] sm:min-h-[44px] px-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <Scale className="h-5 w-5 sm:h-4 sm:w-4 shrink-0" />
+              <span className="text-[10px] sm:text-sm font-medium leading-tight text-center">Legal Advisor</span>
             </TabsTrigger>
-            <TabsTrigger value="chat" className="flex items-center gap-2">
-              <MessageCircle className="h-4 w-4" />
-              <span className="hidden sm:inline">Support Chat</span>
+            <TabsTrigger 
+              value="chat" 
+              className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 min-h-[56px] sm:min-h-[44px] px-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <MessageCircle className="h-5 w-5 sm:h-4 sm:w-4 shrink-0" />
+              <span className="text-[10px] sm:text-sm font-medium leading-tight text-center">Support Chat</span>
             </TabsTrigger>
           </TabsList>
 
