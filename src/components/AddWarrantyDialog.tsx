@@ -292,6 +292,19 @@ export const AddWarrantyDialog = () => {
     e.preventDefault();
     setLoading(true);
 
+    // CRITICAL: Re-validate limits before submission (defense in depth)
+    // This prevents bypassing client-side checks via browser manipulation
+    const finalCheck = canAddWarranty();
+    if (!finalCheck || !finalCheck.allowed) {
+      setLoading(false);
+      setOpen(false);
+      setUpgradeReason(finalCheck?.reason || "Account limit reached");
+      setUpgradeTier((finalCheck as any)?.currentTier || 'free');
+      setShowUpgradePrompt(true);
+      toast.error("Cannot add warranty: Account limit reached");
+      return;
+    }
+
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
@@ -394,19 +407,49 @@ export const AddWarrantyDialog = () => {
   };
 
   const handleOpenDialog = () => {
-    // Check if user can add warranty
+    // CRITICAL: ALWAYS validate user limits before allowing dialog to open
+    // This is a security-critical check that prevents unauthorized warranty creation
     const check = canAddWarranty();
     
-    if (!check.allowed) {
-      // Show upgrade prompt
-      setUpgradeReason(check.reason);
-      setUpgradeTier((check as any).currentTier || 'free');
-      setShowUpgradePrompt(true);
+    // Defensive programming: Validate the check result structure
+    if (!check || typeof check.allowed !== 'boolean') {
+      toast.error("Unable to verify account limits. Please refresh the page.");
       return;
     }
     
-    // Open dialog
+    // BLOCK: User has reached their limit
+    if (!check.allowed) {
+      // Ensure dialog is explicitly closed (prevent state race conditions)
+      setOpen(false);
+      
+      // Set upgrade prompt state atomically
+      setUpgradeReason(check.reason || "You've reached your account limit.");
+      setUpgradeTier((check as any).currentTier || 'free');
+      setShowUpgradePrompt(true);
+      
+      // Double-check: If somehow dialog is still open, force close it
+      setTimeout(() => {
+        if (open) {
+          setOpen(false);
+        }
+      }, 0);
+      
+      return; // CRITICAL: Do not proceed to open dialog
+    }
+    
+    // ALLOW: User has capacity to add warranty
+    // Ensure upgrade prompt is explicitly closed (prevent state race conditions)
+    setShowUpgradePrompt(false);
+    
+    // Open the dialog
     setOpen(true);
+    
+    // Double-check: If somehow upgrade prompt is still open, force close it
+    setTimeout(() => {
+      if (showUpgradePrompt) {
+        setShowUpgradePrompt(false);
+      }
+    }, 0);
   };
 
   return (
